@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "typecheck": "tsc -b --noEmit"
+    "dev": "npx vite",
+    "build": "npx tsc -b && npx vite build",
+    "typecheck": "npx tsc -b --noEmit"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
