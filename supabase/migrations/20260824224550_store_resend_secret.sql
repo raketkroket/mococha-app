@@ -1,0 +1,1 @@
+-- Configure RESEND_API_KEY through Supabase Edge Function secrets.

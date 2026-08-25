@@ -1,0 +1,24 @@
+{
+  "name": "MOCOCHA",
+  "short_name": "MOCOCHA",
+  "description": "Luxury party styling, event decoration and rental in the Netherlands.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FCFBF8",
+  "theme_color": "#FCFBF8",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/app%20icon%20mococha.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/app%20icon%20mococha.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
