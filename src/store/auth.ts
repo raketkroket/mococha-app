@@ -35,8 +35,26 @@ export const useAuth = create<AuthState>((set) => ({
   signOut: async () => { if (supabase) await supabase.auth.signOut(); set({ user: null, session: null }); },
   resetPassword: async (email) => {
     if (!supabase) return { error: isSupabaseConfigured ? "Auth not configured." : "Supabase environment variables are missing. Please contact support." };
-    const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/account/inloggen` : undefined;
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
-    return { error: error?.message ?? null };
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+      const lang = typeof document !== "undefined" && document.documentElement.lang === "en" ? "en" : "nl";
+      const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/account/inloggen` : undefined;
+
+      const resp = await fetch(`${supabaseUrl}/functions/v1/auth-reset`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseAnonKey}` },
+        body: JSON.stringify({ email, lang, redirect_to: redirectTo }),
+      });
+
+      if (!resp.ok) {
+        const result = await resp.json().catch(() => ({}));
+        return { error: result.error || "Failed to send reset email. Please try again." };
+      }
+
+      return { error: null };
+    } catch {
+      return { error: "Network error. Please check your connection and try again." };
+    }
   },
 }));

@@ -9,16 +9,22 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/app%20icon%20mococha.png",
+      "src": "/mocochalogo.webp",
       "sizes": "192x192",
-      "type": "image/png",
+      "type": "image/webp",
       "purpose": "any maskable"
     },
     {
-      "src": "/app%20icon%20mococha.png",
+      "src": "/mocochalogo.webp",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/webp",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/mococha-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
     }
   ]
 }

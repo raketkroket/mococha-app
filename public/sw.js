@@ -1,5 +1,5 @@
 const CACHE_NAME = "mococha-v2";
-const ASSETS = ["/", "/index.html", "/manifest.json", "/app%20icon%20mococha.png", "/mococha-mark.svg", "/mococha-hero.webp"];
+const ASSETS = ["/", "/index.html", "/manifest.json", "/mocochalogo.webp", "/mococha-mark.svg", "/mococha-hero.webp"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)).catch(() => {}));

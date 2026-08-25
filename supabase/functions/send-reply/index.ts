@@ -140,11 +140,22 @@ Deno.serve(async (req: Request) => {
           }),
         });
 
+        const adminEmailResult = emailResp.ok ? await emailResp.json() : null;
+        const adminEmailError = emailResp.ok ? null : await emailResp.text();
+        if (adminEmailError) console.error("Customer notification email failed:", adminEmailError);
         emailStatus = emailResp.ok ? "sent" : "failed";
-        if (!emailResp.ok) {
-          const errText = await emailResp.text();
-          console.error("Customer notification email failed:", errText);
-        }
+
+        // Log customer notification email
+        await supabase.from("email_log").insert({
+          conversation_id,
+          recipient: user_email,
+          subject: isEnLang ? "New message from MOCOCHA" : "Nieuw bericht van MOCOCHA",
+          template: "new_message",
+          provider_message_id: adminEmailResult?.id || null,
+          status: emailResp.ok ? "sent" : "failed",
+          error: adminEmailError,
+          sent_at: emailResp.ok ? new Date().toISOString() : null,
+        });
       } else if (sender === "user") {
         // Notify MOCOCHA admin
         const emailResp = await fetch("https://api.resend.com/emails", {
@@ -168,11 +179,22 @@ Deno.serve(async (req: Request) => {
           }),
         });
 
+        const userEmailResult = emailResp.ok ? await emailResp.json() : null;
+        const userEmailError = emailResp.ok ? null : await emailResp.text();
+        if (userEmailError) console.error("Admin notification email failed:", userEmailError);
         emailStatus = emailResp.ok ? "sent" : "failed";
-        if (!emailResp.ok) {
-          const errText = await emailResp.text();
-          console.error("Admin notification email failed:", errText);
-        }
+
+        // Log admin notification email
+        await supabase.from("email_log").insert({
+          conversation_id,
+          recipient: MOCOCHA_EMAIL,
+          subject: `Nieuw bericht van klant${user_name ? ` — ${user_name}` : ""}`,
+          template: "new_message",
+          provider_message_id: userEmailResult?.id || null,
+          status: emailResp.ok ? "sent" : "failed",
+          error: userEmailError,
+          sent_at: emailResp.ok ? new Date().toISOString() : null,
+        });
       }
     } else {
       emailStatus = "not_applicable";

@@ -106,7 +106,7 @@ Deno.serve(async (req: Request) => {
           sender: "user",
           author_id: user_id,
           body: message.trim(),
-          email_status: resendKey ? "sent" : "not_applicable",
+          email_status: resendKey ? "pending" : "not_applicable",
         });
 
         if (msgError) {
@@ -142,13 +142,22 @@ Deno.serve(async (req: Request) => {
         }),
       });
 
-      if (emailResp.ok) {
-        emailStatus = "sent";
-      } else {
-        const errText = await emailResp.text();
-        console.error("Contact email failed:", errText);
-        emailStatus = "failed";
-      }
+      const internalResult = emailResp.ok ? await emailResp.json() : null;
+      const internalError = emailResp.ok ? null : await emailResp.text();
+      if (internalError) console.error("Contact email failed:", internalError);
+      emailStatus = emailResp.ok ? "sent" : "failed";
+
+      // Log internal email
+      await supabase.from("email_log").insert({
+        recipient: MOCOCHA_EMAIL,
+        subject: `Contact: ${subject.trim()}${conceptRef}`,
+        template: "contact_message",
+        concept_id: concept_id || null,
+        provider_message_id: internalResult?.id || null,
+        status: emailResp.ok ? "sent" : "failed",
+        error: internalError,
+        sent_at: emailResp.ok ? new Date().toISOString() : null,
+      });
 
       // 5. Send confirmation email to the customer
       if (reply_email.toLowerCase() !== MOCOCHA_EMAIL) {
@@ -187,10 +196,20 @@ Deno.serve(async (req: Request) => {
           }),
         });
 
-        if (!confirmResp.ok) {
-          const errText = await confirmResp.text();
-          console.error("Confirmation email failed:", errText);
-        }
+        const confirmResult = confirmResp.ok ? await confirmResp.json() : null;
+        const confirmError = confirmResp.ok ? null : await confirmResp.text();
+        if (confirmError) console.error("Confirmation email failed:", confirmError);
+
+        // Log confirmation email
+        await supabase.from("email_log").insert({
+          recipient: reply_email,
+          subject: isEn ? "We've received your message — MOCOCHA" : "We hebben je bericht ontvangen — MOCOCHA",
+          template: "contact_confirmation",
+          provider_message_id: confirmResult?.id || null,
+          status: confirmResp.ok ? "sent" : "failed",
+          error: confirmError,
+          sent_at: confirmResp.ok ? new Date().toISOString() : null,
+        });
       }
     }
 
