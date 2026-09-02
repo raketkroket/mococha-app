@@ -26,11 +26,20 @@ export const useAuth = create<AuthState>((set) => ({
   },
   signUp: async (email, password) => {
     if (!supabase) return { error: isSupabaseConfigured ? "Auth not configured." : "Supabase environment variables are missing. Please contact support." };
-    const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/account` : undefined;
-    const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: redirectTo } });
-    if (error) return { error: error.message };
-    const needsConfirmation = !data.session && !data.user?.email_confirmed_at;
-    return { error: null, needsConfirmation };
+    try {
+      const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/account` : undefined;
+      const lang = typeof document !== "undefined" && document.documentElement.lang === "en" ? "en" : "nl";
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL as string}/functions/v1/auth-signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY as string}` },
+        body: JSON.stringify({ email, password, lang, redirect_to: redirectTo }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) return { error: result.error || "Account aanmaken is mislukt." };
+      return { error: null, needsConfirmation: true };
+    } catch {
+      return { error: "Netwerkfout. Controleer je verbinding en probeer het opnieuw." };
+    }
   },
   signOut: async () => { if (supabase) await supabase.auth.signOut(); set({ user: null, session: null }); },
   resetPassword: async (email) => {
