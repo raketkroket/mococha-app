@@ -373,6 +373,29 @@ h1, h2, h3 { font-family: var(--sans); font-weight: 500; letter-spacing: -0.02em
 .odesc { font-size: 0.8125rem; color: var(--taupe); margin-top: 1px; line-height: 1.45; }
 .oprice { margin-left: auto; font-weight: 500; color: var(--chocolate); white-space: nowrap; font-size: 0.875rem; }
 
+/* ── Builder edit overview ───────────────────────────────── */
+.build-edit-toggle {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s3);
+  padding: var(--s3); border: 0.5px solid var(--fine-border); border-radius: var(--r-md);
+  background: var(--soft-surface);
+}
+.build-edit-toggle strong, .build-edit-copy strong { display: block; font-size: 0.875rem; color: var(--near-black); }
+.build-edit-toggle span { display: block; margin-top: 2px; color: var(--taupe); font-size: 0.75rem; line-height: 1.35; }
+.build-edit-toggle .btn { min-height: 40px; flex-shrink: 0; padding: 0 12px; }
+.build-edit-overview { display: grid; gap: var(--s2); margin: 0 0 var(--s5); }
+.build-edit-item {
+  display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: var(--s2);
+  min-height: 62px; width: 100%; padding: var(--s3); text-align: left;
+  border: 0.5px solid var(--fine-border); border-radius: var(--r-sm); background: var(--pure-white);
+}
+.build-edit-item.complete { border-color: rgba(90, 110, 84, 0.45); }
+.build-edit-item.current { border: 1.5px solid var(--chocolate); }
+.build-edit-number { display: grid; place-items: center; width: 24px; height: 24px; border-radius: var(--r-full); background: var(--warm-white); color: var(--chocolate); font-size: 0.75rem; font-weight: 600; }
+.build-edit-item.complete .build-edit-number { background: var(--success); color: var(--pure-white); }
+.build-edit-copy { min-width: 0; }
+.build-edit-copy small { display: block; overflow: hidden; margin-top: 2px; color: var(--taupe); font-size: 0.75rem; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.build-edit-action { color: var(--chocolate); font-size: 0.75rem; font-weight: 600; }
+
 /* ── Cards: Concept Card ──────────────────────────────────── */
 .concept-card {
   border-radius: var(--r-md);

@@ -317,6 +317,7 @@ export default function BuildParty() {
   const [saved, setSaved] = useState(false);
   const [stepDir, setStepDir] = useState<"forward" | "backward">("forward");
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [showEditOverview, setShowEditOverview] = useState(Boolean(party.activeConceptId));
 
   useEffect(() => { fetchThemes().then(setThemes).catch(() => {}); }, []);
 
@@ -380,6 +381,28 @@ export default function BuildParty() {
   const canProceed = !((step === 4 && !themeValid) || (step === 1 && timeInvalid));
 
   const showSkip = step >= 5 && step <= 12;
+  const selectedForStep = (stepIndex: number) => {
+    const group = STEP_KEY_GROUPS.find((item) => item.index === stepIndex);
+    return group ? party.selections.filter((selection) => group.keys.includes(selection.step_key)) : [];
+  };
+  const stepSummary = (stepIndex: number) => {
+    if (stepIndex === 0) return party.event.type;
+    if (stepIndex === 1) return party.event.date;
+    if (stepIndex === 2) return [party.event.address, party.event.city].filter(Boolean).join(", ");
+    if (stepIndex === 3) return party.event.num_children > 0 ? `${party.event.num_children} ${t("build.children")}` : "";
+    if (stepIndex === 4) return party.theme?.theme || party.theme?.custom_theme || (party.theme?.design_by_mococha ? "MOCOCHA" : "");
+    if (stepIndex === 13) return party.event.address || party.selections.find((selection) => selection.step_key === "service")?.title || "";
+    if (stepIndex === 14) return hasPaidSelections ? eur(breakdown.total_gross) : "";
+    const selections = selectedForStep(stepIndex);
+    return selections.map((selection) => selection.title).join(", ");
+  };
+  const editStep = (stepIndex: number) => {
+    party.setStep(stepIndex);
+    setStepDir(stepIndex < step ? "backward" : "forward");
+    setShowEditOverview(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    haptic("selection");
+  };
 
   return (
     <div>
@@ -387,6 +410,33 @@ export default function BuildParty() {
         <h1 className="screen-title">{t("build.title")}</h1>
         <button className="hbtn" onClick={saveDraft} aria-label={t("build.save")}><CheckIcon size={20} /></button>
       </div>
+      <div className="build-edit-toggle mb16">
+        <div>
+          <strong>{party.activeConceptId ? t("build.editing_concept") : t("build.edit_overview")}</strong>
+          <span>{party.activeConceptId ? t("build.editing_concept_desc") : t("build.edit_overview_desc")}</span>
+        </div>
+        <button className="btn bo" onClick={() => setShowEditOverview((visible) => !visible)}>
+          {showEditOverview ? t("build.hide_overview") : t("build.edit_overview")}
+        </button>
+      </div>
+      {showEditOverview && (
+        <section className="build-edit-overview" aria-label={t("build.edit_overview")}>
+          {STEPS.map((item, index) => {
+            const summary = stepSummary(index);
+            const isComplete = Boolean(summary);
+            return (
+              <button key={item.key} className={`build-edit-item ${isComplete ? "complete" : ""} ${index === step ? "current" : ""}`} onClick={() => editStep(index)}>
+                <span className="build-edit-number">{index + 1}</span>
+                <span className="build-edit-copy">
+                  <strong>{t(item.titleKey)}</strong>
+                  <small>{summary || t("build.not_started")}</small>
+                </span>
+                <span className="build-edit-action">{isComplete ? t("build.change") : t("build.start_step")}</span>
+              </button>
+            );
+          })}
+        </section>
+      )}
       <div className="pbar mb8"><div className="pfill" style={{ width: `${progress}%` }} /></div>
       <div className="rb mb16">
         <span className="muted" style={{ fontSize: "0.78rem", letterSpacing: "0.04em" }}>{t("build.step", { current: step + 1, total: STEPS.length, name: t(STEPS[step].titleKey) })}</span>
