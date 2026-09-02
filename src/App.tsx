@@ -29,6 +29,7 @@ import Security from "./screens/Security";
 import MfaChallenge from "./screens/MfaChallenge";
 import NotificationsSettings from "./screens/NotificationsSettings";
 import Privacy from "./screens/Privacy";
+import ResetPassword from "./screens/ResetPassword";
 
 import { AdminLayout } from "./admin/AdminLayout";
 import { useAdminAuth } from "./admin/auth";
@@ -123,6 +124,7 @@ export default function App() {
           <Route path="/inspiratie" element={<TabLayout><Inspiration /></TabLayout>} />
           <Route path="/account" element={<TabLayout><Account /></TabLayout>} />
           <Route path="/account/inloggen" element={<HeaderLayout><Auth /></HeaderLayout>} />
+          <Route path="/account/wachtwoord-herstellen" element={<HeaderLayout><ResetPassword /></HeaderLayout>} />
           <Route path="/account/profiel" element={<HeaderLayout><ProfileEdit /></HeaderLayout>} />
           <Route path="/account/instellingen" element={<HeaderLayout><Settings /></HeaderLayout>} />
           <Route path="/account/weergave" element={<HeaderLayout><Appearance /></HeaderLayout>} />

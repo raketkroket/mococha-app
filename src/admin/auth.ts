@@ -84,7 +84,7 @@ export const useAdminAuth = create<AdminAuthState>((set, get) => ({
   resetPassword: async (email) => {
     if (!supabase) return { error: "Auth not configured." };
     try {
-      const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/admin` : undefined;
+      const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/account/wachtwoord-herstellen` : undefined;
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL as string}/functions/v1/auth-reset`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY as string}` },

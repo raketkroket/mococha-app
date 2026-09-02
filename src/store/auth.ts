@@ -39,7 +39,7 @@ export const useAuth = create<AuthState>((set) => ({
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
       const lang = typeof document !== "undefined" && document.documentElement.lang === "en" ? "en" : "nl";
-      const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/account/inloggen` : undefined;
+      const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/account/wachtwoord-herstellen` : undefined;
 
       const resp = await fetch(`${supabaseUrl}/functions/v1/auth-reset`, {
         method: "POST",
