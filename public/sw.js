@@ -1,4 +1,4 @@
-const CACHE_NAME = "mococha-v2";
+const CACHE_NAME = "mococha-v3";
 const ASSETS = ["/", "/index.html", "/manifest.json", "/mocochalogo.webp", "/mococha-mark.svg", "/mococha-hero.webp"];
 
 self.addEventListener("install", (event) => {
@@ -20,15 +20,12 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const fetchPromise = fetch(event.request).then((response) => {
-        if (response && response.status === 200 && response.type === "basic") {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
-        }
-        return response;
-      }).catch(() => cached);
-      return cached || fetchPromise;
-    })
+    fetch(event.request).then((response) => {
+      if (response && response.status === 200 && response.type === "basic") {
+        const responseClone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+      }
+      return response;
+    }).catch(() => caches.match(event.request))
   );
 });
