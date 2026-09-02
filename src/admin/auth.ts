@@ -117,33 +117,9 @@ export const useAdminAuth = create<AdminAuthState>((set, get) => ({
       .eq("user_id", user.id)
       .maybeSingle();
 
-    const { data: profileData } = await s
-      .from("profiles")
-      .select("is_admin, is_active_staff")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    const isProfileAdmin = (profileData as { is_admin: boolean } | null)?.is_admin ?? false;
-    const isActiveStaff =
-      (profileData as { is_active_staff: boolean } | null)?.is_active_staff ?? false;
-
     const staffRole = roleData as { role: StaffRole; is_active: boolean } | null;
-    const hasStaffRole = staffRole?.is_active === true;
-    const hasAccess = hasStaffRole || isProfileAdmin;
-
-    const role = hasStaffRole ? staffRole!.role : isProfileAdmin ? "owner" : null;
-
-    if (hasAccess && isActiveStaff === false && !isProfileAdmin) {
-      set({
-        user: null,
-        loading: false,
-        role: null,
-        isAdmin: false,
-        aal2: false,
-        needsMfaChallenge: false,
-      });
-      return false;
-    }
+    const hasAccess = staffRole?.is_active === true;
+    const role = hasAccess ? staffRole!.role : null;
 
     // Check AAL2
     const { data: aal } = await s.auth.mfa.getAuthenticatorAssuranceLevel();

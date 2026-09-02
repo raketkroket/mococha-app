@@ -62,8 +62,7 @@ CREATE TRIGGER profiles_prevent_privilege_changes
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.prevent_profile_privilege_changes();
 
-DELETE FROM public.server_secrets
-WHERE key IN ('MOLLIE_API_KEY', 'RESEND_API_KEY');
+DROP TRIGGER IF EXISTS profiles_sync_staff_role ON public.profiles;
 
 -- Existing legacy admins retain access through the protected role table.
 INSERT INTO public.staff_roles (user_id, role, is_active)
