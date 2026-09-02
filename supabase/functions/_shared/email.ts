@@ -68,6 +68,16 @@ export function getSafeRedirectUrl(value: unknown, fallbackPath: string): string
   }
 }
 
+function getSafeEmailActionUrl(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function getResendApiKey(client?: SecretClient): Promise<string | undefined> {
   const configured = Deno.env.get("RESEND_API_KEY");
   if (configured) return configured;
@@ -84,9 +94,10 @@ export function createMocochaEmail(content: EmailContent): { html: string; text:
   const baseUrl = getAppBaseUrl();
   const logoUrl = `${baseUrl}/mocochaoriginal.png`;
   const isEn = content.lang === "en";
+  const buttonUrl = getSafeEmailActionUrl(content.buttonUrl);
   const fallbackLinkText = content.fallbackLinkText || (isEn ? "Having trouble with the button? Open this link." : "Werkt de knop niet? Open deze link.");
-  const button = content.buttonText && content.buttonUrl
-    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:28px 0 0;"><tr><td bgcolor="#3A332D" style="border-radius:8px;"><a href="${escapeHtml(content.buttonUrl)}" style="display:inline-block;padding:14px 26px;color:#FCFBF8;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;line-height:20px;text-decoration:none;border-radius:8px;">${escapeHtml(content.buttonText)}</a></td></tr></table><p style="margin:16px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#9A8877;">${escapeHtml(fallbackLinkText)}<br><a href="${escapeHtml(content.buttonUrl)}" style="color:#6B5D52;word-break:break-all;text-decoration:underline;">${escapeHtml(content.buttonUrl)}</a></p>`
+  const button = content.buttonText && buttonUrl
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:28px 0 0;"><tr><td bgcolor="#3A332D" style="border-radius:8px;"><a href="${escapeHtml(buttonUrl)}" style="display:inline-block;padding:14px 26px;color:#FCFBF8;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;line-height:20px;text-decoration:none;border-radius:8px;">${escapeHtml(content.buttonText)}</a></td></tr></table><p style="margin:16px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#9A8877;">${escapeHtml(fallbackLinkText)}<br><a href="${escapeHtml(buttonUrl)}" style="color:#6B5D52;word-break:break-all;text-decoration:underline;">${escapeHtml(buttonUrl)}</a></p>`
     : "";
   const greeting = content.greeting
     ? `<p style="margin:0 0 20px;font-family:Georgia,'Times New Roman',serif;font-size:21px;line-height:29px;color:#3A332D;">${escapeHtml(content.greeting)}</p>`
@@ -94,7 +105,7 @@ export function createMocochaEmail(content: EmailContent): { html: string; text:
   const footer = content.footerText || (isEn
     ? "You are receiving this email because of your activity on mococha.nl."
     : "Je ontvangt deze e-mail vanwege je activiteit op mococha.nl.");
-  const text = [content.title, "", content.greeting || null, content.contentText, content.buttonText && content.buttonUrl ? `${content.buttonText}: ${content.buttonUrl}` : null, "", isEn ? "Kind regards," : "Met vriendelijke groet,", "MOCOCHA", "", footer]
+  const text = [content.title, "", content.greeting || null, content.contentText, content.buttonText && buttonUrl ? `${content.buttonText}: ${buttonUrl}` : null, "", isEn ? "Kind regards," : "Met vriendelijke groet,", "MOCOCHA", "", footer]
     .filter((line): line is string => Boolean(line))
     .join("\n");
 
