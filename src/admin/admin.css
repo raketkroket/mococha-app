@@ -771,13 +771,15 @@
 
 /* Content management */
 .admin-sub-tabs {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--s2);
   margin-bottom: var(--s4);
   border-bottom: 0.5px solid var(--admin-border);
 }
 .admin-sub-tab {
   padding: var(--s2) var(--s3);
+  text-align: left;
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--taupe);
