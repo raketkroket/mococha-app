@@ -22,6 +22,4 @@ ALTER TABLE public.server_secrets ENABLE ROW LEVEL SECURITY;
 -- No policies — only service role (which bypasses RLS) can access this table.
 -- anon and authenticated roles get zero rows.
 
-INSERT INTO public.server_secrets (key, value, description) VALUES
-  ('MOLLIE_API_KEY', 'live_vRypvBRMcabSRzDrpMKcpnUW9BACQn', 'Mollie live API key for payments')
-ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();
+-- Set MOLLIE_API_KEY with `supabase secrets set`; never commit provider keys.

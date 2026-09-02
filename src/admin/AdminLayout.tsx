@@ -2,6 +2,7 @@ import { useState, useEffect, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAdminAuth } from "./auth";
 import { usePrefs } from "../store/prefs";
+import { useViewMode } from "../store/viewMode";
 import { createAdminT } from "./i18n";
 import MfaChallenge from "../screens/MfaChallenge";
 import {
@@ -26,6 +27,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   const { isAdmin, loading, needsMfaChallenge, verifyMfaChallenge } = useAdminAuth();
   const { language } = usePrefs();
   const t = createAdminT(language);
+  const setViewMode = useViewMode((state) => state.setMode);
   const [isTablet, setIsTablet] = useState(false);
 
   useEffect(() => {
@@ -70,13 +72,13 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   if (isTablet) {
-    return <AdminSidebarLayout>{children}</AdminSidebarLayout>;
+    return <AdminSidebarLayout onUseCustomerView={() => { setViewMode("user"); navigate("/account"); }}>{children}</AdminSidebarLayout>;
   }
 
-  return <AdminPhoneLayout>{children}</AdminPhoneLayout>;
+  return <AdminPhoneLayout onUseCustomerView={() => { setViewMode("user"); navigate("/account"); }}>{children}</AdminPhoneLayout>;
 }
 
-function AdminPhoneLayout({ children }: { children: ReactNode }) {
+function AdminPhoneLayout({ children, onUseCustomerView }: { children: ReactNode; onUseCustomerView: () => void }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { language } = usePrefs();
@@ -101,6 +103,9 @@ function AdminPhoneLayout({ children }: { children: ReactNode }) {
           <span className="admin-header-name">MOCOCHA</span>
           <span className="admin-header-badge">Beheer</span>
         </div>
+        <button className="admin-customer-view" onClick={onUseCustomerView} title="Open klantweergave" aria-label="Open klantweergave">
+          <UserIcon size={19} />
+        </button>
       </header>
       <main className="admin-main">{children}</main>
       <nav className="admin-tabbar">
@@ -123,7 +128,7 @@ function AdminPhoneLayout({ children }: { children: ReactNode }) {
   );
 }
 
-function AdminSidebarLayout({ children }: { children: ReactNode }) {
+function AdminSidebarLayout({ children, onUseCustomerView }: { children: ReactNode; onUseCustomerView: () => void }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { language } = usePrefs();
@@ -192,6 +197,10 @@ function AdminSidebarLayout({ children }: { children: ReactNode }) {
           })}
         </nav>
         <div className="admin-sidebar-footer">
+          <button className="admin-sidebar-item" onClick={onUseCustomerView} title={collapsed ? "Klantweergave" : undefined}>
+            <UserIcon size={20} />
+            {!collapsed && <span>Klantweergave</span>}
+          </button>
           <button
             className="admin-sidebar-item"
             onClick={() => {

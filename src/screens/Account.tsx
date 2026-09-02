@@ -12,6 +12,8 @@ import {
 import type { AppSettings } from "../data/settings";
 import { haptic } from "../lib/adapters/haptics";
 import { useI18n } from "../i18n";
+import { useAdminAuth } from "../admin/auth";
+import { useViewMode } from "../store/viewMode";
 
 export default function Account() {
   const navigate = useNavigate();
@@ -19,6 +21,9 @@ export default function Account() {
   const signOut = useAuth((s) => s.signOut);
   const profile = useProfile();
   const { t } = useI18n();
+  const isAdmin = useAdminAuth((state) => state.isAdmin);
+  const viewMode = useViewMode((state) => state.mode);
+  const setViewMode = useViewMode((state) => state.setMode);
   const [settings, setSettings] = useState<AppSettings>({ instagram_url: getInstagramUrl(), contact_email: "info@mococha.nl", terms_url: "/info/algemene-voorwaarden", privacy_url: "/info/privacy", app_version: "1.0.0", company_city: "Almere, Nederland" });
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -92,6 +97,28 @@ export default function Account() {
         <MenuRow icon={MapPinIcon} label={t("account.addresses")} onClick={() => navigate("/account/adressen")} />
         <MenuRow icon={ShieldIcon} label={t("account.security")} onClick={() => navigate("/account/beveiliging")} />
       </div>
+
+      {isAdmin && (
+        <>
+          <div className="section-label">Weergave</div>
+          <div className="account-mode-switcher">
+            <div className="seg" role="group" aria-label="Weergave kiezen">
+              <button className={`seg-btn ${viewMode === "user" ? "active" : ""}`} onClick={() => setViewMode("user")}>Gebruiker</button>
+              <button
+                className={`seg-btn ${viewMode === "admin" ? "active" : ""}`}
+                onClick={() => { setViewMode("admin"); navigate("/admin"); }}
+              >
+                Admin
+              </button>
+            </div>
+            <button className="info-row" onClick={() => { setViewMode("admin"); navigate("/admin"); }}>
+              <div className="info-row-icon"><ShieldIcon size={20} /></div>
+              <div className="f1"><div className="info-row-text">Naar beheer</div></div>
+              <ChevronRight size={18} style={{ color: "var(--taupe-light)" }} />
+            </button>
+          </div>
+        </>
+      )}
 
       <div className="section-label">{t("account.preferences")}</div>
       <div style={{ borderTop: "0.5px solid var(--hairline)" }}>

@@ -1,10 +1,11 @@
 import { useEffect } from "react";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Navigate, Routes, Route, useLocation } from "react-router-dom";
 import { Header, TabBar } from "./components/Nav";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import { useAuth } from "./store/auth";
 import { useTheme } from "./store/theme";
 import { usePrefs } from "./store/prefs";
+import { useViewMode } from "./store/viewMode";
 
 import Home from "./screens/Home";
 import BuildParty from "./screens/BuildParty";
@@ -84,6 +85,7 @@ function HeaderLayout({ children, title }: { children: React.ReactNode; title?: 
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { isAdmin, loading } = useAdminAuth();
+  const mode = useViewMode((state) => state.mode);
 
   if (loading) {
     return (
@@ -97,6 +99,10 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
     return <AdminLogin />;
   }
 
+  if (mode !== "admin") {
+    return <Navigate to="/account" replace />;
+  }
+
   return <AdminLayout>{children}</AdminLayout>;
 }
 
@@ -104,15 +110,17 @@ export default function App() {
   const init = useAuth((s) => s.init);
   const initTheme = useTheme((s) => s.init);
   const initPrefs = usePrefs((s) => s.init);
+  const initViewMode = useViewMode((s) => s.init);
   const initAdmin = useAdminAuth((s) => s.init);
 
   useEffect(() => {
     initTheme();
     initPrefs();
+    initViewMode();
     const u = init();
     const ua = initAdmin();
     return () => { u(); ua(); };
-  }, [init, initTheme, initPrefs, initAdmin]);
+  }, [init, initTheme, initPrefs, initViewMode, initAdmin]);
 
   return (
     <BrowserRouter>

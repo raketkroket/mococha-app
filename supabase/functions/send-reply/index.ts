@@ -36,19 +36,69 @@ Deno.serve(async (req: Request) => {
     let user_email = userEmailParam;
     let user_name = userNameParam;
 
-    if (!conversation_id || !sender || !messageBody) {
+    if (!conversation_id || (sender !== "user" && sender !== "admin") || typeof messageBody !== "string" || !messageBody.trim()) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    const token = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
+    if (!token) {
+      return new Response(JSON.stringify({ error: "Not authenticated" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: authData, error: authError } = await supabase.auth.getUser(token);
+    const requester = authData.user;
+    if (authError || !requester) {
+      return new Response(JSON.stringify({ error: "Not authenticated" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: conversation } = await supabase
+      .from("conversations")
+      .select("user_id")
+      .eq("id", conversation_id)
+      .maybeSingle();
+    if (!conversation) {
+      return new Response(JSON.stringify({ error: "Conversation not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (sender === "admin") {
+      const { data: staffRole } = await supabase
+        .from("staff_roles")
+        .select("user_id")
+        .eq("user_id", requester.id)
+        .eq("is_active", true)
+        .maybeSingle();
+      if (!staffRole) {
+        return new Response(JSON.stringify({ error: "Admin access required" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else if (conversation.user_id !== requester.id) {
+      return new Response(JSON.stringify({ error: "Conversation access denied" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    } else {
+      user_email = requester.email;
+    }
+
     // 1. Insert the message
     const { data: message, error: msgError } = await supabase.from("conversation_messages").insert({
       conversation_id,
       sender,
-      author_id: author_id || null,
-      body: messageBody,
+      author_id: requester.id,
+      body: messageBody.trim(),
       attachments: attachments || [],
       email_status: "pending",
     }).select().maybeSingle();

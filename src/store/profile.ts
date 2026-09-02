@@ -23,6 +23,11 @@ export interface ProfileData {
   created_at: string;
 }
 
+type EditableProfileData = Pick<ProfileData,
+  "full_name" | "phone" | "avatar_path" | "preferred_language" | "preferred_theme" |
+  "notification_preferences" | "marketing_opt_in" | "prefers_reduced_motion"
+>;
+
 type ProfileState = {
   profile: ProfileData | null;
   loading: boolean;
@@ -31,7 +36,7 @@ type ProfileState = {
   avatarUploadProgress: number;
 
   load: () => Promise<void>;
-  update: (patch: Partial<ProfileData>) => Promise<{ error: string | null }>;
+  update: (patch: Partial<EditableProfileData>) => Promise<{ error: string | null }>;
   uploadAvatar: (file: Blob, ext: string) => Promise<{ error: string | null }>;
   removeAvatar: () => Promise<{ error: string | null }>;
   getAvatarUrl: () => Promise<string | null>;

@@ -79,6 +79,19 @@
   align-items: center;
   gap: var(--s2);
 }
+.admin-customer-view {
+  width: 40px;
+  height: 40px;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--admin-radius-sm);
+  color: var(--admin-text-muted);
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease), transform 0.12s;
+}
+.admin-customer-view:hover { background: var(--soft-surface); color: var(--admin-text); }
+.admin-customer-view:active { transform: scale(0.94); }
 .admin-header-logo {
   width: 28px;
   height: 28px;

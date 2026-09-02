@@ -117,12 +117,14 @@ export const adminApi = {
   ) {
     if (!supabase) return { error: "Not configured" };
     const { data: user } = await supabase.auth.getUser();
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
     const url = import.meta.env.VITE_SUPABASE_URL;
     const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    if (url && anonKey) {
+    if (url && anonKey && accessToken) {
       const resp = await fetch(`${url}/functions/v1/send-reply`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${anonKey}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}`, apikey: anonKey },
         body: JSON.stringify({
           conversation_id: conversationId,
           sender: "admin",
