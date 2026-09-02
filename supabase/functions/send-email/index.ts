@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { getResendApiKey, isValidEmail, sendEmail } from "../_shared/email.ts";
+import { createMocochaEmail, escapeHtml, getAppBaseUrl, getResendApiKey, isValidEmail, sendEmail } from "../_shared/email.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,7 +11,7 @@ const corsHeaders = {
 const MOCOCHA_EMAIL = "info@mococha.nl";
 const INSTAGRAM_URL = "https://www.instagram.com/mococha_events/";
 
-function emailTemplate(opts: {
+function legacyEmailTemplate(opts: {
   preheader: string;
   title: string;
   greeting?: string;
@@ -115,6 +115,32 @@ function emailTemplate(opts: {
 </html>`;
 }
 
+function emailTemplate(opts: {
+  preheader: string;
+  title: string;
+  greeting?: string;
+  bodyHtml: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
+  secondaryLinkLabel?: string;
+  secondaryLinkUrl?: string;
+}): string {
+  const secondaryLink = opts.secondaryLinkLabel && opts.secondaryLinkUrl
+    ? `<p style="margin:20px 0 0;"><a href="${escapeHtml(opts.secondaryLinkUrl)}" style="color:#6B5D52;text-decoration:underline;">${escapeHtml(opts.secondaryLinkLabel)}</a></p>`
+    : "";
+  const contentText = `${opts.bodyHtml.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()}${opts.secondaryLinkLabel && opts.secondaryLinkUrl ? `\n\n${opts.secondaryLinkLabel}: ${opts.secondaryLinkUrl}` : ""}`;
+  return createMocochaEmail({
+    previewText: opts.preheader,
+    title: opts.title,
+    greeting: opts.greeting,
+    contentHtml: `${opts.bodyHtml}${secondaryLink}`,
+    contentText,
+    buttonText: opts.ctaLabel,
+    buttonUrl: opts.ctaUrl,
+    lang: "nl",
+  }).html;
+}
+
 type EmailType =
   | "welcome"
   | "email_verification"
@@ -129,9 +155,12 @@ type EmailType =
   | "delivery_info"
   | "contact_message";
 
-function buildEmail(type: EmailType, lang: string, data: Record<string, string>): { subject: string; html: string } {
+function buildEmail(type: EmailType, lang: string, rawData: Record<string, string>): { subject: string; html: string } {
   const isEn = lang === "en";
-  const baseUrl = Deno.env.get("APP_BASE_URL") || "https://mococha.nl";
+  const baseUrl = getAppBaseUrl();
+  const data = Object.fromEntries(
+    Object.entries(rawData).map(([key, value]) => [key, key.endsWith("_url") ? String(value ?? "") : escapeHtml(value)]),
+  ) as Record<string, string>;
 
   switch (type) {
     case "welcome":
