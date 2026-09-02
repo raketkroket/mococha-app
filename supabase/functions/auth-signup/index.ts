@@ -37,14 +37,26 @@ Deno.serve(async (req: Request) => {
     const language = getLanguage(lang);
     const isEn = language === "en";
     const redirectTo = getSafeRedirectUrl(redirect_to, "/account");
-    const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+    const { data: signupLinkData, error: signupLinkError } = await supabase.auth.admin.generateLink({
       type: "signup",
       email,
       password,
       options: { redirectTo },
     });
+    let actionLink = signupLinkData?.properties?.action_link;
+    let linkError = signupLinkError;
 
-    if (linkError || !linkData?.properties?.action_link) {
+    if (!actionLink && linkError?.message.toLowerCase().includes("already been registered")) {
+      const { data: existingLinkData, error: existingLinkError } = await supabase.auth.admin.generateLink({
+        type: "magiclink",
+        email,
+        options: { redirectTo, shouldCreateUser: false },
+      });
+      actionLink = existingLinkData?.properties?.action_link;
+      linkError = existingLinkError;
+    }
+
+    if (linkError || !actionLink) {
       console.error("signup link generation failed:", linkError?.message);
       return new Response(JSON.stringify({ error: linkError?.message || "Account aanmaken is mislukt." }), {
         status: 400,
@@ -63,7 +75,7 @@ Deno.serve(async (req: Request) => {
       contentHtml: `<p style="margin:0;">${escapeHtml(message)}</p>`,
       contentText: message,
       buttonText: isEn ? "Confirm email" : "E-mail bevestigen",
-      buttonUrl: linkData.properties.action_link,
+      buttonUrl: actionLink,
       lang: language,
     });
     const delivery = await sendEmail(resendKey, { to: email, subject, ...content });
