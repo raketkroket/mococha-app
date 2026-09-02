@@ -83,12 +83,18 @@ export const useAdminAuth = create<AdminAuthState>((set, get) => ({
 
   resetPassword: async (email) => {
     if (!supabase) return { error: "Auth not configured." };
-    const redirectTo =
-      typeof window !== "undefined"
-        ? `${window.location.origin}/admin`
-        : undefined;
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
-    return { error: error?.message ?? null };
+    try {
+      const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/admin` : undefined;
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL as string}/functions/v1/auth-reset`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY as string}` },
+        body: JSON.stringify({ email, lang: "nl", redirect_to: redirectTo }),
+      });
+      if (!response.ok) return { error: "Wachtwoordherstel versturen mislukt." };
+      return { error: null };
+    } catch {
+      return { error: "Wachtwoordherstel versturen mislukt." };
+    }
   },
 
   checkAccess: async () => {

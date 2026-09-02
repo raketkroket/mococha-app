@@ -1,13 +1,12 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createMocochaEmail, escapeHtml, getResendApiKey, MOCOCHA_EMAIL, sendEmail } from "../_shared/email.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
-
-const MOCOCHA_EMAIL = "info@mococha.nl";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -83,29 +82,19 @@ Deno.serve(async (req: Request) => {
 
     // Send email via Supabase's built-in email (or store for admin pickup)
     // Using Resend if available, otherwise log for admin dashboard
-    const resendKey = Deno.env.get("RESEND_API_KEY");
+    const resendKey = await getResendApiKey(supabase);
 
     if (resendKey) {
-      const resp = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${resendKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: "MOCOCHA <noreply@mococha.nl>",
-          to: [MOCOCHA_EMAIL],
-          subject,
-          text: body,
-        }),
-      });
-      if (!resp.ok) {
-        const errText = await resp.text();
-        return new Response(JSON.stringify({ error: "Email send failed", detail: errText }), {
+      const content = createMocochaEmail({ previewText: subject, title: subject, contentHtml: `<div style="white-space:pre-wrap;">${escapeHtml(body)}</div>`, contentText: body, lang: "nl" });
+      const delivery = await sendEmail(resendKey, { to: MOCOCHA_EMAIL, subject, ...content });
+      if (!delivery.ok) {
+        await supabase.from("email_log").insert({ recipient: MOCOCHA_EMAIL, subject, template: isQuotation ? "quotation_notification" : "order_notification", status: "failed", error: delivery.error });
+        return new Response(JSON.stringify({ error: "Email send failed" }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      await supabase.from("email_log").insert({ recipient: MOCOCHA_EMAIL, subject, template: isQuotation ? "quotation_notification" : "order_notification", provider_message_id: delivery.messageId, status: "sent", sent_at: new Date().toISOString() });
     }
 
     // Also store notification in database for admin dashboard

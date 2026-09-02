@@ -1,13 +1,12 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createMocochaEmail, escapeHtml, getAppBaseUrl, getLanguage, getResendApiKey, isValidEmail, MOCOCHA_EMAIL, sendEmail } from "../_shared/email.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
-
-const MOCOCHA_EMAIL = "info@mococha.nl";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -20,8 +19,8 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const resendKey = Deno.env.get("RESEND_API_KEY");
-    const baseUrl = Deno.env.get("APP_BASE_URL") || "https://mococha.nl";
+    const resendKey = await getResendApiKey(supabase);
+    const baseUrl = getAppBaseUrl();
 
     const body = await req.json();
     const {
@@ -77,7 +76,7 @@ Deno.serve(async (req: Request) => {
     await supabase.from("conversations").update(convUpdate).eq("id", conversation_id);
 
     // 3. Send email notification
-    const isEnLang = lang === "en";
+    const isEnLang = getLanguage(lang) === "en";
     let emailStatus = "not_applicable";
 
     if (resendKey) {
@@ -98,102 +97,43 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      if (sender === "admin" && user_email) {
+      if (sender === "admin" && isValidEmail(user_email)) {
         // Notify the customer
-        const emailResp = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${resendKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: "MOCOCHA <noreply@mococha.nl>",
-            to: [user_email],
-            subject: isEnLang ? "New message from MOCOCHA" : "Nieuw bericht van MOCOCHA",
-            text: isEnLang
-              ? [
-                  `Hi ${user_name || ""},`,
-                  "",
-                  "You have received a new message from MOCOCHA:",
-                  "",
-                  messageBody,
-                  "",
-                  "Read and reply at:",
-                  `${baseUrl}/account/berichten`,
-                  "",
-                  "With kind regards,",
-                  "MOCOCHA",
-                ].join("\n")
-              : [
-                  `Hallo ${user_name || ""},`,
-                  "",
-                  "Je hebt een nieuw bericht ontvangen van MOCOCHA:",
-                  "",
-                  messageBody,
-                  "",
-                  "Lees en reageer op:",
-                  `${baseUrl}/account/berichten`,
-                  "",
-                  "Met vriendelijke groet,",
-                  "MOCOCHA",
-                ].join("\n"),
-          }),
-        });
-
-        const adminEmailResult = emailResp.ok ? await emailResp.json() : null;
-        const adminEmailError = emailResp.ok ? null : await emailResp.text();
-        if (adminEmailError) console.error("Customer notification email failed:", adminEmailError);
-        emailStatus = emailResp.ok ? "sent" : "failed";
+        const subject = isEnLang ? "New message from MOCOCHA" : "Nieuw bericht van MOCOCHA";
+        const introduction = isEnLang ? "You have received a new message from MOCOCHA:" : "Je hebt een nieuw bericht ontvangen van MOCOCHA:";
+        const content = createMocochaEmail({ previewText: subject, title: isEnLang ? "New message" : "Nieuw bericht", greeting: user_name ? (isEnLang ? `Hi ${user_name},` : `Hallo ${user_name},`) : undefined, contentHtml: `<p style="margin:0 0 16px;">${introduction}</p><div style="padding:16px;background:#F5F1EB;border-radius:8px;white-space:pre-wrap;">${escapeHtml(messageBody)}</div>`, contentText: `${introduction}\n\n${messageBody}`, buttonText: isEnLang ? "Read message" : "Bericht lezen", buttonUrl: `${baseUrl}/account/berichten`, lang: isEnLang ? "en" : "nl" });
+        const delivery = await sendEmail(resendKey, { to: user_email, subject, ...content });
+        emailStatus = delivery.ok ? "sent" : "failed";
 
         // Log customer notification email
         await supabase.from("email_log").insert({
           conversation_id,
           recipient: user_email,
-          subject: isEnLang ? "New message from MOCOCHA" : "Nieuw bericht van MOCOCHA",
+          subject,
           template: "new_message",
-          provider_message_id: adminEmailResult?.id || null,
-          status: emailResp.ok ? "sent" : "failed",
-          error: adminEmailError,
-          sent_at: emailResp.ok ? new Date().toISOString() : null,
+          provider_message_id: delivery.messageId,
+          status: delivery.ok ? "sent" : "failed",
+          error: delivery.error,
+          sent_at: delivery.ok ? new Date().toISOString() : null,
         });
       } else if (sender === "user") {
         // Notify MOCOCHA admin
-        const emailResp = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${resendKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: "MOCOCHA <noreply@mococha.nl>",
-            to: [MOCOCHA_EMAIL],
-            reply_to: user_email || undefined,
-            subject: `Nieuw bericht van klant${user_name ? ` — ${user_name}` : ""}`,
-            text: [
-              `Klant: ${user_email || "onbekend"}`,
-              "",
-              messageBody,
-              "",
-              `Bekijk en reageer op: ${baseUrl}/admin/berichten`,
-            ].join("\n"),
-          }),
-        });
-
-        const userEmailResult = emailResp.ok ? await emailResp.json() : null;
-        const userEmailError = emailResp.ok ? null : await emailResp.text();
-        if (userEmailError) console.error("Admin notification email failed:", userEmailError);
-        emailStatus = emailResp.ok ? "sent" : "failed";
+        const subject = `Nieuw bericht van klant${user_name ? ` — ${user_name}` : ""}`;
+        const body = [`Klant: ${user_email || "onbekend"}`, "", messageBody, "", `Bekijk en reageer op: ${baseUrl}/admin/berichten`].join("\n");
+        const content = createMocochaEmail({ previewText: subject, title: subject, contentHtml: `<div style="white-space:pre-wrap;">${escapeHtml(body)}</div>`, contentText: body, lang: "nl" });
+        const delivery = await sendEmail(resendKey, { to: MOCOCHA_EMAIL, replyTo: isValidEmail(user_email) ? user_email : undefined, subject, ...content });
+        emailStatus = delivery.ok ? "sent" : "failed";
 
         // Log admin notification email
         await supabase.from("email_log").insert({
           conversation_id,
           recipient: MOCOCHA_EMAIL,
-          subject: `Nieuw bericht van klant${user_name ? ` — ${user_name}` : ""}`,
+          subject,
           template: "new_message",
-          provider_message_id: userEmailResult?.id || null,
-          status: emailResp.ok ? "sent" : "failed",
-          error: userEmailError,
-          sent_at: emailResp.ok ? new Date().toISOString() : null,
+          provider_message_id: delivery.messageId,
+          status: delivery.ok ? "sent" : "failed",
+          error: delivery.error,
+          sent_at: delivery.ok ? new Date().toISOString() : null,
         });
       }
     } else {

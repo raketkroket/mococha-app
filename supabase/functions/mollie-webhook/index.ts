@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createMocochaEmail, getResendApiKey, sendEmail } from "../_shared/email.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -61,7 +62,7 @@ Deno.serve(async (req: Request) => {
 
     if (payment) {
       const updateData: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
-      if (status === "paid") {
+      if (status === "paid" && payment.status !== "paid") {
         updateData.paid_at = new Date().toISOString();
         updateData.webhook_verified_at = new Date().toISOString();
       }
@@ -80,7 +81,7 @@ Deno.serve(async (req: Request) => {
           });
 
           // Send payment confirmation email via Resend
-          const resendKey = Deno.env.get("RESEND_API_KEY");
+          const resendKey = await getResendApiKey(supabase);
           if (resendKey) {
             // Fetch user email from profiles
             const { data: profile } = await supabase
@@ -91,7 +92,6 @@ Deno.serve(async (req: Request) => {
 
             const customerEmail = profile?.email;
             if (customerEmail && customerEmail.toLowerCase() !== "info@mococha.nl") {
-              const isEn = false; // Default to Dutch for payment confirmations
               const subject = isDeposit ? "Aanbetaling ontvangen — MOCOCHA" : "Betaling ontvangen — MOCOCHA";
               const emailBody = [
                 `Je ${isDeposit ? "aanbetaling" : "betaling"} van €${(payment.amount ?? 0).toFixed(2)} is ontvangen.`,
@@ -102,19 +102,24 @@ Deno.serve(async (req: Request) => {
                 "MOCOCHA",
               ].join("\n");
 
-              await fetch("https://api.resend.com/emails", {
-                method: "POST",
-                headers: {
-                  "Authorization": `Bearer ${resendKey}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  from: "MOCOCHA <noreply@mococha.nl>",
-                  to: [customerEmail],
-                  subject,
-                  text: emailBody,
-                }),
-              }).catch((e: unknown) => console.error("Payment email failed:", e));
+              const content = createMocochaEmail({
+                previewText: subject,
+                title: isDeposit ? "Aanbetaling ontvangen" : "Betaling ontvangen",
+                greeting: "Bedankt!",
+                contentHtml: `<p style="margin:0 0 16px;">Je ${isDeposit ? "aanbetaling" : "betaling"} van <strong>€${Number(payment.amount ?? 0).toFixed(2)}</strong> is ontvangen.</p><p style="margin:0;">We beginnen met de voorbereiding van je feest.</p>`,
+                contentText: emailBody,
+                lang: "nl",
+              });
+              const delivery = await sendEmail(resendKey, { to: customerEmail, subject, ...content });
+              await supabase.from("email_log").insert({
+                recipient: customerEmail,
+                subject,
+                template: "payment_received",
+                provider_message_id: delivery.messageId,
+                status: delivery.ok ? "sent" : "failed",
+                error: delivery.error,
+                sent_at: delivery.ok ? new Date().toISOString() : null,
+              });
             }
           }
         }

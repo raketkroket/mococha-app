@@ -5,7 +5,6 @@ import { useProfile } from "../store/profile";
 import { useI18n } from "../i18n";
 import { haptic } from "../lib/adapters/haptics";
 import { getAppSettings } from "../data/settings";
-import { supabase } from "../data/api";
 import {
   listPasskeys,
   listMfaFactors,
@@ -34,6 +33,7 @@ export default function Security() {
   const navigate = useNavigate();
   const user = useAuth((s) => s.user);
   const signOut = useAuth((s) => s.signOut);
+  const resetPassword = useAuth((s) => s.resetPassword);
   const profile = useProfile();
   const { t } = useI18n();
   const [resetSent, setResetSent] = useState(false);
@@ -66,11 +66,11 @@ export default function Security() {
   };
 
   const handleChangePassword = async () => {
-    if (!supabase || !user?.email) { setResetError("Geen verbinding"); return; }
+    if (!user?.email) { setResetError("Geen verbinding"); return; }
     setResetting(true); setResetError(null);
-    const { error } = await supabase.auth.resetPasswordForEmail(user.email, { redirectTo: window.location.origin + "/account/inloggen" });
+    const { error } = await resetPassword(user.email);
     setResetting(false);
-    if (error) { setResetError(error.message); return; }
+    if (error) { setResetError(error); return; }
     setResetSent(true); haptic("success");
     await logSecurityEvent("password_change_requested", true);
   };

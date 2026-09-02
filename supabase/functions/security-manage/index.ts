@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.4";
+import { createMocochaEmail, getResendApiKey, isValidEmail, sendEmail } from "../_shared/email.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -227,28 +228,25 @@ async function sendSecurityNotification(
     body: msg.body,
   });
 
-  // Try to send email if Resend is configured
-  const resendKey = Deno.env.get("RESEND_API_KEY");
-  const fromAddress = Deno.env.get("EMAIL_FROM_ADDRESS") ?? "noreply@mococha.nl";
-  const baseUrl = Deno.env.get("APP_BASE_URL") ?? "https://mococha-app.vercel.app";
+  const resendKey = await getResendApiKey(admin);
 
-  if (resendKey && userEmail) {
-    try {
-      await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${resendKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: `MOCOCHA <${fromAddress}>`,
-          to: [userEmail],
-          subject: msg.title,
-          text: `${msg.title}\n\n${msg.body}\n\nMet vriendelijke groet,\nMOCOCHA`,
-        }),
-      });
-    } catch {
-      // Email is best-effort
-    }
+  if (isValidEmail(userEmail)) {
+    const content = createMocochaEmail({
+      previewText: msg.title,
+      title: msg.title,
+      contentHtml: `<p style="margin:0;">${msg.body}</p>`,
+      contentText: msg.body,
+      lang: "nl",
+    });
+    const delivery = await sendEmail(resendKey, { to: userEmail, subject: msg.title, ...content });
+    await admin.from("email_log").insert({
+      recipient: userEmail,
+      subject: msg.title,
+      template: `security_${eventType}`,
+      provider_message_id: delivery.messageId,
+      status: delivery.ok ? "sent" : "failed",
+      error: delivery.error,
+      sent_at: delivery.ok ? new Date().toISOString() : null,
+    });
   }
 }

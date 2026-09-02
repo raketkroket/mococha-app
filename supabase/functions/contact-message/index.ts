@@ -1,13 +1,12 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createMocochaEmail, escapeHtml, getLanguage, getResendApiKey, isValidEmail, MOCOCHA_EMAIL, sendEmail } from "../_shared/email.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
-
-const MOCOCHA_EMAIL = "info@mococha.nl";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -20,8 +19,7 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const resendKey = Deno.env.get("RESEND_API_KEY");
-    const baseUrl = Deno.env.get("APP_BASE_URL") || "https://mococha.nl";
+    const resendKey = await getResendApiKey(supabase);
 
     const body = await req.json();
     const {
@@ -35,7 +33,7 @@ Deno.serve(async (req: Request) => {
       lang,
     } = body;
 
-    if (!subject || !message || !reply_email) {
+    if (typeof subject !== "string" || !subject.trim() || subject.length > 200 || typeof message !== "string" || !message.trim() || message.length > 10000 || !isValidEmail(reply_email)) {
       return new Response(JSON.stringify({ error: "Missing required fields: subject, message, reply_email" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -120,95 +118,46 @@ Deno.serve(async (req: Request) => {
 
     if (resendKey) {
       const conceptRef = concept_name ? ` "${concept_name}"` : "";
-
-      const emailResp = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${resendKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: "MOCOCHA <noreply@mococha.nl>",
-          to: [MOCOCHA_EMAIL],
-          reply_to: reply_email,
-          subject: `Contact: ${subject.trim()}${conceptRef}`,
-          text: [
-            `Van: ${reply_email}`,
-            `Onderwerp: ${subject.trim()}`,
-            concept_name ? `Concept: ${concept_name}` : null,
-            "",
-            message.trim(),
-          ].filter(Boolean).join("\n"),
-        }),
+      const internalSubject = `Contact: ${subject.trim()}${conceptRef}`;
+      const internalContent = createMocochaEmail({
+        previewText: "Nieuw contactbericht",
+        title: "Nieuw contactbericht",
+        contentHtml: `<p style="margin:0 0 12px;"><strong>Van:</strong> ${escapeHtml(reply_email)}</p><p style="margin:0 0 12px;"><strong>Onderwerp:</strong> ${escapeHtml(subject.trim())}</p>${concept_name ? `<p style="margin:0 0 12px;"><strong>Concept:</strong> ${escapeHtml(concept_name)}</p>` : ""}<div style="padding:16px;background:#F5F1EB;border-radius:8px;white-space:pre-wrap;">${escapeHtml(message.trim())}</div>`,
+        contentText: [`Van: ${reply_email}`, `Onderwerp: ${subject.trim()}`, concept_name ? `Concept: ${concept_name}` : null, "", message.trim()].filter(Boolean).join("\n"),
       });
-
-      const internalResult = emailResp.ok ? await emailResp.json() : null;
-      const internalError = emailResp.ok ? null : await emailResp.text();
-      if (internalError) console.error("Contact email failed:", internalError);
-      emailStatus = emailResp.ok ? "sent" : "failed";
+      const internalDelivery = await sendEmail(resendKey, { to: MOCOCHA_EMAIL, replyTo: reply_email, subject: internalSubject, ...internalContent });
+      emailStatus = internalDelivery.ok ? "sent" : "failed";
 
       // Log internal email
       await supabase.from("email_log").insert({
         recipient: MOCOCHA_EMAIL,
-        subject: `Contact: ${subject.trim()}${conceptRef}`,
+        subject: internalSubject,
         template: "contact_message",
         concept_id: concept_id || null,
-        provider_message_id: internalResult?.id || null,
-        status: emailResp.ok ? "sent" : "failed",
-        error: internalError,
-        sent_at: emailResp.ok ? new Date().toISOString() : null,
+        provider_message_id: internalDelivery.messageId,
+        status: internalDelivery.ok ? "sent" : "failed",
+        error: internalDelivery.error,
+        sent_at: internalDelivery.ok ? new Date().toISOString() : null,
       });
 
       // 5. Send confirmation email to the customer
       if (reply_email.toLowerCase() !== MOCOCHA_EMAIL) {
-        const isEn = lang === "en";
-        const confirmResp = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${resendKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: "MOCOCHA <noreply@mococha.nl>",
-            to: [reply_email],
-            subject: isEn ? "We've received your message — MOCOCHA" : "We hebben je bericht ontvangen — MOCOCHA",
-            text: isEn
-              ? [
-                  "Thank you for your message!",
-                  "",
-                  "We've received your message and will get back to you as soon as possible.",
-                  "",
-                  `Subject: ${subject.trim()}`,
-                  "",
-                  "With kind regards,",
-                  "MOCOCHA",
-                ].join("\n")
-              : [
-                  "Bedankt voor je bericht!",
-                  "",
-                  "We hebben je bericht ontvangen en nemen zo snel mogelijk contact met je op.",
-                  "",
-                  `Onderwerp: ${subject.trim()}`,
-                  "",
-                  "Met vriendelijke groet,",
-                  "MOCOCHA",
-                ].join("\n"),
-          }),
-        });
-
-        const confirmResult = confirmResp.ok ? await confirmResp.json() : null;
-        const confirmError = confirmResp.ok ? null : await confirmResp.text();
-        if (confirmError) console.error("Confirmation email failed:", confirmError);
+        const language = getLanguage(lang);
+        const isEn = language === "en";
+        const confirmationSubject = isEn ? "We've received your message — MOCOCHA" : "We hebben je bericht ontvangen — MOCOCHA";
+        const confirmationText = isEn ? "We've received your message and will get back to you as soon as possible." : "We hebben je bericht ontvangen en nemen zo snel mogelijk contact met je op.";
+        const confirmationContent = createMocochaEmail({ previewText: confirmationText, title: isEn ? "Message received" : "Bericht ontvangen", greeting: isEn ? "Thank you!" : "Bedankt!", contentHtml: `<p style="margin:0 0 16px;">${escapeHtml(confirmationText)}</p><p style="margin:0;color:#8B7E6B;font-size:13px;">${escapeHtml(isEn ? `Subject: ${subject.trim()}` : `Onderwerp: ${subject.trim()}`)}</p>`, contentText: `${confirmationText}\n\n${isEn ? "Subject" : "Onderwerp"}: ${subject.trim()}`, lang: language });
+        const confirmationDelivery = await sendEmail(resendKey, { to: reply_email, subject: confirmationSubject, ...confirmationContent });
 
         // Log confirmation email
         await supabase.from("email_log").insert({
           recipient: reply_email,
-          subject: isEn ? "We've received your message — MOCOCHA" : "We hebben je bericht ontvangen — MOCOCHA",
+          subject: confirmationSubject,
           template: "contact_confirmation",
-          provider_message_id: confirmResult?.id || null,
-          status: confirmResp.ok ? "sent" : "failed",
-          error: confirmError,
-          sent_at: confirmResp.ok ? new Date().toISOString() : null,
+          provider_message_id: confirmationDelivery.messageId,
+          status: confirmationDelivery.ok ? "sent" : "failed",
+          error: confirmationDelivery.error,
+          sent_at: confirmationDelivery.ok ? new Date().toISOString() : null,
         });
       }
     }

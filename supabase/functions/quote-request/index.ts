@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createMocochaEmail, escapeHtml, getAppBaseUrl, getLanguage, getResendApiKey, isValidEmail, MOCOCHA_EMAIL, sendEmail } from "../_shared/email.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,7 +8,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const MOCOCHA_EMAIL = "info@mococha.nl";
 const LARGE_BUS_SURCHARGE = 350;
 
 Deno.serve(async (req: Request) => {
@@ -21,8 +21,8 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const resendKey = Deno.env.get("RESEND_API_KEY");
-    const appBaseUrl = Deno.env.get("APP_BASE_URL") || "https://mococha.nl";
+    const resendKey = await getResendApiKey(supabase);
+    const appBaseUrl = getAppBaseUrl();
 
     const body = await req.json();
     const {
@@ -37,6 +37,12 @@ Deno.serve(async (req: Request) => {
 
     if (!concept_id) {
       return new Response(JSON.stringify({ error: "Missing concept_id" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (customer_email && !isValidEmail(customer_email)) {
+      return new Response(JSON.stringify({ error: "Invalid customer_email" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -132,24 +138,25 @@ Deno.serve(async (req: Request) => {
         isEn ? `Deposit (30%): €${depositAmount.toFixed(2)}` : `Aanbetaling (30%): €${depositAmount.toFixed(2)}`,
       ].filter(Boolean).join("\n");
 
-      const internalResp = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${resendKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: "MOCOCHA <noreply@mococha.nl>",
-          to: [MOCOCHA_EMAIL],
-          subject: internalSubject,
-          text: internalBody,
-        }),
+      const selectedLanguage = getLanguage(language);
+      const internalContent = createMocochaEmail({
+        previewText: internalSubject,
+        title: internalSubject,
+        contentHtml: `<div style="white-space:pre-wrap;">${escapeHtml(internalBody)}</div>`,
+        contentText: internalBody,
+        lang: selectedLanguage,
       });
-
-      if (!internalResp.ok) {
-        const errText = await internalResp.text();
-        console.error("Internal email failed:", errText);
-      }
+      const internalDelivery = await sendEmail(resendKey, { to: MOCOCHA_EMAIL, subject: internalSubject, ...internalContent });
+      await supabase.from("email_log").insert({
+        recipient: MOCOCHA_EMAIL,
+        subject: internalSubject,
+        template: "quote_request_admin",
+        concept_id,
+        provider_message_id: internalDelivery.messageId,
+        status: internalDelivery.ok ? "sent" : "failed",
+        error: internalDelivery.error,
+        sent_at: internalDelivery.ok ? new Date().toISOString() : null,
+      });
 
       // Customer confirmation email — only if email is present and not info@mococha.nl
       if (customer_email && customer_email.toLowerCase() !== MOCOCHA_EMAIL) {
@@ -179,24 +186,29 @@ Deno.serve(async (req: Request) => {
           "MOCOCHA",
         ].join("\n");
 
-        const customerResp = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${resendKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: "MOCOCHA <noreply@mococha.nl>",
-            to: [customer_email],
-            subject: customerSubject,
-            text: customerBody,
-          }),
+        const summaryRows = [[isEn ? "Event type" : "Type feest", eventType], [isEn ? "Date" : "Datum", eventDate], [isEn ? "City" : "Plaats", eventCity], [isEn ? "Estimated total" : "Geschat totaal", `EUR ${totalGross.toFixed(2)}`], [isEn ? "Deposit (30%)" : "Aanbetaling (30%)", `EUR ${depositAmount.toFixed(2)}`]]
+          .map(([label, value]) => `<tr><td style="padding:8px 0;color:#8B7E6B;">${escapeHtml(label)}</td><td align="right" style="padding:8px 0;color:#4A3936;font-weight:600;">${escapeHtml(value)}</td></tr>`).join("");
+        const customerContent = createMocochaEmail({
+          previewText: customerSubject,
+          title: isEn ? "Quote request received" : "Offerteaanvraag ontvangen",
+          greeting: isEn ? "Thank you!" : "Bedankt!",
+          contentHtml: `<p style="margin:0 0 20px;">${escapeHtml(isEn ? "We have received your party concept and will contact you within 48 hours with a personalized quote." : "We hebben je feestconcept ontvangen en nemen binnen 48 uur contact met je op met een persoonlijke offerte.")}</p><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #E7E0D8;border-bottom:1px solid #E7E0D8;">${summaryRows}</table>`,
+          contentText: customerBody,
+          buttonText: isEn ? "View concept" : "Concept bekijken",
+          buttonUrl: `${appBaseUrl}/concepten/${encodeURIComponent(concept_id)}`,
+          lang: selectedLanguage,
         });
-
-        if (!customerResp.ok) {
-          const errText = await customerResp.text();
-          console.error("Customer email failed:", errText);
-        }
+        const customerDelivery = await sendEmail(resendKey, { to: customer_email, subject: customerSubject, ...customerContent });
+        await supabase.from("email_log").insert({
+          recipient: customer_email,
+          subject: customerSubject,
+          template: "quote_request_confirmation",
+          concept_id,
+          provider_message_id: customerDelivery.messageId,
+          status: customerDelivery.ok ? "sent" : "failed",
+          error: customerDelivery.error,
+          sent_at: customerDelivery.ok ? new Date().toISOString() : null,
+        });
       }
 
       // Add in-app notification for authenticated users

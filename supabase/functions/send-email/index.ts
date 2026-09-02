@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { getResendApiKey, isValidEmail, sendEmail } from "../_shared/email.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -370,17 +371,14 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    let resendKey = Deno.env.get("RESEND_API_KEY");
-
-    if (!resendKey) {
-      const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-      const { data: secretRow } = await supabase
-        .from("server_secrets")
-        .select("value")
-        .eq("key", "RESEND_API_KEY")
-        .maybeSingle();
-      resendKey = secretRow?.value || undefined;
+    if (!isValidEmail(to)) {
+      return new Response(JSON.stringify({ error: "Invalid recipient email", email_status: "failed" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const resendKey = await getResendApiKey(supabase);
 
     if (!resendKey) {
       return new Response(JSON.stringify({
@@ -395,45 +393,24 @@ Deno.serve(async (req: Request) => {
 
     const { subject, html } = buildEmail(type as EmailType, lang || "nl", data || {});
 
-    const emailPayload: Record<string, unknown> = {
-      from: "MOCOCHA <noreply@mococha.nl>",
-      to: [to],
-      subject,
-      html,
-    };
+    const text = html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    const delivery = await sendEmail(resendKey, { to, subject, html, text, bcc: bcc_mococha ? [MOCOCHA_EMAIL] : undefined });
 
-    if (bcc_mococha) {
-      emailPayload.bcc = [MOCOCHA_EMAIL];
-    }
-
-    const resp = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${resendKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(emailPayload),
-    });
-
-    if (!resp.ok) {
-      const errText = await resp.text();
-      console.error("Email send failed:", resp.status, errText);
+    if (!delivery.ok) {
       return new Response(JSON.stringify({
-        error: `Email sending failed (${resp.status})`,
+        error: "Email sending failed",
         email_status: "failed",
-        detail: errText,
+        detail: delivery.error,
       }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const result = await resp.json();
-
     return new Response(JSON.stringify({
       success: true,
       email_status: "sent",
-      message_id: result.id,
+      message_id: delivery.messageId,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
