@@ -28,10 +28,10 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   const { language } = usePrefs();
   const t = createAdminT(language);
   const setViewMode = useViewMode((state) => state.setMode);
-  const [isTablet, setIsTablet] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
 
   useEffect(() => {
-    const check = () => setIsTablet(window.innerWidth >= 768);
+    const check = () => setIsDesktop(window.innerWidth >= 1024);
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
@@ -71,7 +71,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  if (isTablet) {
+  if (isDesktop) {
     return <AdminSidebarLayout onUseCustomerView={() => { setViewMode("user"); navigate("/account"); }}>{children}</AdminSidebarLayout>;
   }
 
@@ -137,21 +137,28 @@ function AdminSidebarLayout({ children, onUseCustomerView }: { children: ReactNo
   const { signOut } = useAdminAuth();
   const [collapsed, setCollapsed] = useState(false);
 
-  const navItems = [
-    { path: "/admin", icon: HomeIcon, label: t("admin.tab.overview"), exact: true },
-    { path: "/admin/concepten", icon: ConceptIcon, label: t("admin.tab.concepts") },
-    { path: "/admin/agenda", icon: ClockIcon, label: t("admin.nav.agenda") },
-    { path: "/admin/klanten", icon: UserIcon, label: t("admin.nav.customers") },
-    { path: "/admin/berichten", icon: MailIcon, label: t("admin.nav.messages") },
-    { path: "/admin/offertes", icon: LayersIcon, label: t("admin.nav.quotations") },
-    { path: "/admin/betalingen", icon: CreditCard, label: t("admin.nav.payments") },
-    { path: "/admin/inspiratie", icon: SparklesIcon, label: t("admin.nav.inspiration") },
-    { path: "/admin/themas", icon: InspireIcon, label: t("admin.nav.themes") },
-    { path: "/admin/onderdelen", icon: PackageIcon, label: t("admin.nav.components") },
-    { path: "/admin/media", icon: SparklesIcon, label: t("admin.nav.media") },
-    { path: "/admin/notificaties", icon: BellIcon, label: t("admin.nav.notifications") },
-    { path: "/admin/medewerkers", icon: UserIcon, label: t("admin.nav.staff") },
-    { path: "/admin/instellingen", icon: SettingsIcon, label: t("admin.nav.settings") },
+  const navGroups = [
+    { label: "Overzicht", items: [{ path: "/admin", icon: HomeIcon, label: t("admin.tab.overview"), exact: true }] },
+    { label: "Beheer", items: [
+      { path: "/admin/concepten", icon: ConceptIcon, label: t("admin.tab.concepts") },
+      { path: "/admin/klanten", icon: UserIcon, label: t("admin.nav.customers") },
+      { path: "/admin/berichten", icon: MailIcon, label: t("admin.tab.messages") },
+      { path: "/admin/agenda", icon: ClockIcon, label: t("admin.nav.agenda") },
+    ] },
+    { label: "Financieel", items: [
+      { path: "/admin/offertes", icon: LayersIcon, label: t("admin.nav.quotations") },
+      { path: "/admin/betalingen", icon: CreditCard, label: t("admin.nav.payments") },
+    ] },
+    { label: "Content", items: [
+      { path: "/admin/themas", icon: InspireIcon, label: t("admin.nav.themes") },
+      { path: "/admin/onderdelen", icon: PackageIcon, label: t("admin.nav.components") },
+      { path: "/admin/media", icon: SparklesIcon, label: t("admin.nav.media") },
+      { path: "/admin/inspiratie", icon: SparklesIcon, label: t("admin.nav.inspiration") },
+    ] },
+    { label: "Organisatie", items: [
+      { path: "/admin/medewerkers", icon: UserIcon, label: t("admin.nav.staff") },
+      { path: "/admin/audit", icon: ShieldIcon, label: t("admin.nav.audit") },
+    ] },
   ];
 
   const isActive = (path: string, exact?: boolean) =>
@@ -180,22 +187,27 @@ function AdminSidebarLayout({ children, onUseCustomerView }: { children: ReactNo
             />
           </button>
         </div>
-        <nav className="admin-sidebar-nav">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item.path, item.exact);
-            return (
-              <button
-                key={item.path}
-                className={`admin-sidebar-item ${active ? "active" : ""}`}
-                onClick={() => navigate(item.path)}
-                title={collapsed ? item.label : undefined}
-              >
-                <Icon size={20} />
-                {!collapsed && <span>{item.label}</span>}
-              </button>
-            );
-          })}
+        <nav className="admin-sidebar-nav" aria-label="Admin navigatie">
+          {navGroups.map((group) => (
+            <div className="admin-sidebar-group" key={group.label}>
+              {!collapsed && <span className="admin-sidebar-group-label">{group.label}</span>}
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                const active = isActive(item.path, item.exact);
+                return (
+                  <button
+                    key={item.path}
+                    className={`admin-sidebar-item ${active ? "active" : ""}`}
+                    onClick={() => navigate(item.path)}
+                    title={collapsed ? item.label : undefined}
+                  >
+                    <Icon size={19} />
+                    {!collapsed && <span>{item.label}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </nav>
         <div className="admin-sidebar-footer">
           <button className="admin-sidebar-item" onClick={onUseCustomerView} title={collapsed ? "Klantweergave" : undefined}>
@@ -215,7 +227,16 @@ function AdminSidebarLayout({ children, onUseCustomerView }: { children: ReactNo
           </button>
         </div>
       </aside>
-      <main className="admin-sidebar-main">{children}</main>
+      <div className="admin-workspace">
+        <header className="admin-topbar">
+          <span className="admin-topbar-context">MOCOCHA / Beheer</span>
+          <button className="admin-customer-view" onClick={onUseCustomerView} title="Open klantweergave" aria-label="Open klantweergave">
+            <UserIcon size={18} />
+            <span>Klantweergave</span>
+          </button>
+        </header>
+        <main className="admin-sidebar-main">{children}</main>
+      </div>
     </div>
   );
 }
