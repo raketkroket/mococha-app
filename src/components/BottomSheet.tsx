@@ -1,17 +1,30 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { XIcon } from "./icons";
 
 export function BottomSheet({ open, onClose, title, children }: { open: boolean; onClose: () => void; title?: string; children: ReactNode }) {
+  const sheetRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (open) document.body.classList.add("no-scroll");
     else document.body.classList.remove("no-scroll");
     return () => document.body.classList.remove("no-scroll");
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    sheetRef.current?.focus();
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
+
   if (!open) return null;
   return (
     <>
       <div className="sback" onClick={onClose} />
-      <div className="sheet" role="dialog" aria-modal="true" aria-label={title}>
+      <div ref={sheetRef} className="sheet" role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}>
         <div className="shandle" />
         {title && (
           <div className="rb mb16">

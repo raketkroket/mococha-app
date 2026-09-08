@@ -4,6 +4,7 @@ import { useAdminAuth } from "../auth";
 import { usePrefs } from "../../store/prefs";
 import { createAdminT } from "../i18n";
 import { ShieldIcon } from "../../components/icons";
+import { friendlyError } from "../../lib/feedback";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -26,7 +27,7 @@ export default function AdminLogin() {
     const { error: err } = await signIn(email, password);
     setLoading(false);
     if (err) {
-      setError(err);
+      setError(friendlyError(err));
     } else {
       navigate("/admin");
     }

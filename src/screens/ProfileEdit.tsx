@@ -5,11 +5,14 @@ import { useI18n } from "../i18n";
 import { haptic } from "../lib/adapters/haptics";
 import { pickFromLibrary, takePhoto, compressImage } from "../lib/adapters/camera";
 import { CheckIcon, AlertIcon, TrashIcon } from "../components/icons";
+import { friendlyError } from "../lib/feedback";
+import { useToast } from "../components/Toast";
 
 export default function ProfileEdit() {
   const profile = useProfile();
   const user = useAuth((s) => s.user);
   const { t } = useI18n();
+  const { showToast } = useToast();
   const p = profile.profile;
 
   const [fullName, setFullName] = useState(p?.full_name ?? "");
@@ -33,8 +36,8 @@ export default function ProfileEdit() {
     setSaving(true); setError(null);
     const { error } = await profile.update({ full_name: fullName, phone });
     setSaving(false);
-    if (error) { setError(error); return; }
-    setSaved(true); haptic("success");
+    if (error) { setError(friendlyError(error)); return; }
+    setSaved(true); showToast(t("profile.saved")); haptic("success");
     setTimeout(() => setSaved(false), 1600);
   };
 
@@ -45,13 +48,13 @@ export default function ProfileEdit() {
     haptic("light");
     const blob = await compressImage(result.dataUrl, 512, 0.82);
     const { error } = await profile.uploadAvatar(blob, "jpeg");
-    if (error) setError(error); else haptic("success");
+    if (error) setError(friendlyError(error)); else haptic("success");
   };
 
   const handleRemoveAvatar = async () => {
     setShowAvatarMenu(false);
     const { error } = await profile.removeAvatar();
-    if (error) setError(error); else haptic("medium");
+    if (error) setError(friendlyError(error)); else haptic("medium");
   };
 
   return (

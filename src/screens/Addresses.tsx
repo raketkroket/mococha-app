@@ -4,6 +4,8 @@ import { useI18n } from "../i18n";
 import { haptic } from "../lib/adapters/haptics";
 import { supabase } from "../data/api";
 import { MapPinIcon, PlusIcon, AlertIcon } from "../components/icons";
+import { friendlyError } from "../lib/feedback";
+import { useToast } from "../components/Toast";
 
 interface Address {
   id: string;
@@ -24,7 +26,7 @@ export default function Addresses() {
   const load = async () => {
     if (!supabase || !user) { setLoading(false); return; }
     const { data, error } = await supabase.from("addresses").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
-    if (error) { setError(error.message); setLoading(false); return; }
+    if (error) { setError(friendlyError(error.message)); setLoading(false); return; }
     setAddresses((data as Address[]) ?? []);
     setLoading(false);
   };
@@ -76,6 +78,7 @@ export default function Addresses() {
 
 function AddressForm({ onCancel, onSaved, userId }: { onCancel: () => void; onSaved: () => void; userId: string }) {
   const { t } = useI18n();
+  const { showToast } = useToast();
   const [street, setStreet] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [city, setCity] = useState("");
@@ -86,14 +89,15 @@ function AddressForm({ onCancel, onSaved, userId }: { onCancel: () => void; onSa
   const canSave = street.trim() && postalCode.trim() && city.trim();
 
   const handleSave = async () => {
-    if (!supabase) { setError("Geen verbinding"); return; }
+    if (!supabase) { setError("Er is geen verbinding met MOCOCHA. Probeer het later opnieuw."); return; }
     setSaving(true); setError(null);
     const { error } = await supabase.from("addresses").insert({
       user_id: userId, street: street.trim(), postal_code: postalCode.trim(), city: city.trim(), label: label.trim() || null,
     });
     setSaving(false);
-    if (error) { setError(error.message); return; }
+    if (error) { setError(friendlyError(error.message)); return; }
     haptic("success");
+    showToast("Adres opgeslagen");
     onSaved();
   };
 

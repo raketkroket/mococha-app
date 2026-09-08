@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { BrowserRouter, Navigate, Routes, Route, useLocation } from "react-router-dom";
 import { Header, TabBar } from "./components/Nav";
 import { OfflineIndicator } from "./components/OfflineIndicator";
+import { ToastProvider } from "./components/Toast";
 import { useAuth } from "./store/auth";
 import { useTheme } from "./store/theme";
 import { usePrefs } from "./store/prefs";
@@ -123,7 +124,8 @@ export default function App() {
   }, [init, initTheme, initPrefs, initViewMode, initAdmin]);
 
   return (
-    <BrowserRouter>
+    <ToastProvider>
+      <BrowserRouter>
       <div className="shell">
         <ScrollToTop />
         <Routes>
@@ -178,6 +180,7 @@ export default function App() {
           <Route path="*" element={<TabLayout><NotFound /></TabLayout>} />
         </Routes>
       </div>
-    </BrowserRouter>
+      </BrowserRouter>
+    </ToastProvider>
   );
 }

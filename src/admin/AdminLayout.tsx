@@ -105,6 +105,7 @@ function AdminPhoneLayout({ children, onUseCustomerView }: { children: ReactNode
         </div>
         <button className="admin-customer-view" onClick={onUseCustomerView} title="Open klantweergave" aria-label="Open klantweergave">
           <UserIcon size={19} />
+          <span>Klantweergave</span>
         </button>
       </header>
       <main className="admin-main">{children}</main>

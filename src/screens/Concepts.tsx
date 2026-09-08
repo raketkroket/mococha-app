@@ -4,6 +4,8 @@ import { eur } from "../utils/format";
 import { BuildIcon } from "../components/icons";
 import { useState } from "react";
 import { useI18n } from "../i18n";
+import { BottomSheet } from "../components/BottomSheet";
+import { useToast } from "../components/Toast";
 
 const sl: Record<ConceptStatus, string> = {
   draft: "status.draft", saved: "status.saved", quotation_requested: "status.quotation_requested",
@@ -85,6 +87,7 @@ export default function Concepts() {
 
 function ConceptCard({ concept: c, onOpen, onEdit, onDuplicate, onDelete }: { concept: SavedConcept; onOpen: () => void; onEdit: () => void; onDuplicate: () => void; onDelete: () => void }) {
   const { t } = useI18n();
+  const { showToast } = useToast();
   const [confirmDelete, setConfirmDelete] = useState(false);
   return (
     <div className="concept-card">
@@ -104,7 +107,15 @@ function ConceptCard({ concept: c, onOpen, onEdit, onDuplicate, onDelete }: { co
         <button onClick={onEdit}>{t("concepts.edit")}</button>
         <button onClick={onDuplicate}>{t("concepts.duplicate")}</button>
         {confirmDelete ? (
-          <button className="danger" onClick={onDelete}>{t("concepts.confirm")}</button>
+          <BottomSheet open={confirmDelete} onClose={() => setConfirmDelete(false)} title="Concept verwijderen?">
+            <p className="muted" style={{ fontSize: "0.875rem", lineHeight: 1.5, marginBottom: "var(--s5)" }}>
+              Dit concept wordt uit je overzicht verwijderd. Je kunt dit daarna niet meer herstellen.
+            </p>
+            <div className="col g8">
+              <button className="btn bp blk" onClick={() => { onDelete(); setConfirmDelete(false); showToast("Concept verwijderd"); }}>Verwijderen</button>
+              <button className="btn bo blk" onClick={() => setConfirmDelete(false)}>Annuleren</button>
+            </div>
+          </BottomSheet>
         ) : (
           <button className="danger" onClick={() => setConfirmDelete(true)}>{t("concepts.delete")}</button>
         )}

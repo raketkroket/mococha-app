@@ -9,6 +9,7 @@ import { signInWithPasskey } from "../lib/auth/security";
 import { isPasskeySupported } from "../lib/auth/platform";
 import { AlertIcon, CheckIcon, FingerprintIcon } from "../components/icons";
 import { useI18n } from "../i18n";
+import { friendlyError } from "../lib/feedback";
 
 const schema = z.object({
   email: z.string().email(),
@@ -37,19 +38,19 @@ export default function Auth() {
     if (mode === "reset") {
       const { error } = await resetPassword(d.email);
       setLoading(false);
-      if (error) { setError(error); return; }
+      if (error) { setError(friendlyError(error, t("contact.error"))); return; }
       setResetSent(true);
       return;
     }
     if (mode === "login") {
       const { error } = await signIn(d.email, d.password);
       setLoading(false);
-      if (error) setError(error);
+      if (error) setError(friendlyError(error));
       else navigate("/account");
     } else {
       const { error, needsConfirmation } = await signUp(d.email, d.password);
       setLoading(false);
-      if (error) setError(error);
+      if (error) setError(friendlyError(error));
       else if (needsConfirmation) setNeedsConfirmation(true);
       else navigate("/account");
     }
@@ -118,13 +119,13 @@ export default function Auth() {
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="field">
           <label>{t("auth.email")}</label>
-          <input className="in" type="email" autoComplete="email" {...register("email")} />
+          <input className="in" type="email" autoComplete="email" aria-invalid={Boolean(errors.email)} {...register("email")} />
           {errors.email && <span className="fe">{t("auth.email_invalid")}</span>}
         </div>
         {mode !== "reset" && (
           <div className="field">
             <label>{t("auth.password")}</label>
-            <input className="in" type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} {...register("password")} />
+            <input className="in" type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} aria-invalid={Boolean(errors.password)} {...register("password")} />
             {errors.password && <span className="fe">{t("auth.password_short")}</span>}
           </div>
         )}
@@ -149,7 +150,7 @@ export default function Auth() {
               setError(null);
               const { error: pkError } = await signInWithPasskey();
               setPasskeyLoading(false);
-              if (pkError) { setError(pkError); return; }
+              if (pkError) { setError(friendlyError(pkError)); return; }
               navigate("/account");
             }}
           >

@@ -9,12 +9,15 @@ import type { AppSettings } from "../data/settings";
 import { haptic } from "../lib/adapters/haptics";
 import { useParty } from "../store/party";
 import { useI18n } from "../i18n";
+import { friendlyError } from "../lib/feedback";
+import { useToast } from "../components/Toast";
 
 export default function Contact() {
   const navigate = useNavigate();
   const user = useAuth((s) => s.user);
   const party = useParty();
   const { t, lang } = useI18n();
+  const { showToast } = useToast();
   const [params] = useSearchParams();
   const conceptId = params.get("concept");
   const [settings, setSettings] = useState<AppSettings>({ instagram_url: getInstagramUrl(), contact_email: "info@mococha.nl", terms_url: "/info/algemene-voorwaarden", privacy_url: "/info/privacy", app_version: "1.0.0", company_city: "Almere, Nederland" });
@@ -67,7 +70,7 @@ export default function Contact() {
       const result = await resp.json();
 
       if (!resp.ok) {
-        setError(result.error || t("contact.error"));
+        setError(friendlyError(result.error, t("contact.error")));
         setSending(false);
         return;
       }
@@ -77,9 +80,10 @@ export default function Contact() {
       }
 
       setSent(true);
+      showToast(t("contact.sent_title"));
       haptic("success");
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("contact.error"));
+      setError(friendlyError(e instanceof Error ? e.message : null, t("contact.error")));
       setSending(false);
     }
   };
