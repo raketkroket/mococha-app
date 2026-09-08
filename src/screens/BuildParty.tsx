@@ -677,11 +677,11 @@ function EventGuestsStep({ party }: { party: Party }) {
       <div className="row g8">
         <div className="field f1">
           <label>{t("build.num_children")}</label>
-          <input type="number" min={0} className="in" value={event.num_children} onChange={(e) => party.setEvent({ num_children: Math.max(0, +e.target.value) })} />
+          <input type="number" min={0} className="in" value={event.num_children || ""} onChange={(e) => party.setEvent({ num_children: Math.max(0, +e.target.value) })} />
         </div>
         <div className="field f1">
           <label>{t("build.num_adults")}</label>
-          <input type="number" min={0} className="in" value={event.num_adults} onChange={(e) => party.setEvent({ num_adults: Math.max(0, +e.target.value) })} />
+          <input type="number" min={0} className="in" value={event.num_adults || ""} onChange={(e) => party.setEvent({ num_adults: Math.max(0, +e.target.value) })} />
         </div>
       </div>
       <div className="field">
