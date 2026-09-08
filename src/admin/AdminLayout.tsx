@@ -13,7 +13,6 @@ import {
   SettingsIcon,
   ChevronRight,
   ShieldIcon,
-  BellIcon,
   CreditCard,
   PackageIcon,
   LayersIcon,
@@ -193,7 +192,7 @@ function AdminSidebarLayout({ children, onUseCustomerView }: { children: ReactNo
               {!collapsed && <span className="admin-sidebar-group-label">{group.label}</span>}
               {group.items.map((item) => {
                 const Icon = item.icon;
-                const active = isActive(item.path, item.exact);
+                const active = isActive(item.path, "exact" in item ? item.exact : undefined);
                 return (
                   <button
                     key={item.path}
