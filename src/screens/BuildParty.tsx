@@ -62,6 +62,13 @@ const STEPS = [
   { key: "review", titleKey: "step.review" },
 ] as const;
 
+const FEATURED_THEMES: Theme[] = [
+  { id: "baby-in-bloom", slug: "baby-in-bloom", title: "Baby In Bloom", description: null, image_url: "/baby%20in%20bloom.png", colors: "#E9BCD1,#A98BD1,#F7E6EE", sort_order: 1 },
+  { id: "rapunzel", slug: "rapunzel", title: "Rapunzel", description: null, image_url: "/Rapunzel.png", colors: "#A38CDD,#E8B5D4,#F4DDE9", sort_order: 2 },
+  { id: "amalfi", slug: "amalfi", title: "Amalfi", description: null, image_url: "/Amalfi.png", colors: "#F3E886,#99C9DC,#F7F5E9", sort_order: 3 },
+  { id: "you-are-my-sunshine", slug: "you-are-my-sunshine", title: "You Are My Sunshine", description: null, image_url: "/you%20are%20my%20sunshine.png", colors: "#F4DC67,#F8F4D6,#A8D2E6", sort_order: 4 },
+];
+
 // ────────────────────────────────────────────────────────────
 // Hardcoded fallback data (used when DB is unavailable)
 // ────────────────────────────────────────────────────────────
@@ -319,7 +326,14 @@ export default function BuildParty() {
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [showEditOverview, setShowEditOverview] = useState(Boolean(party.activeConceptId));
 
-  useEffect(() => { fetchThemes().then(setThemes).catch(() => {}); }, []);
+  useEffect(() => {
+    fetchThemes()
+      .then((availableThemes) => {
+        const availableBySlug = new Map(availableThemes.map((theme) => [theme.slug, theme]));
+        setThemes(FEATURED_THEMES.map((theme) => ({ ...availableBySlug.get(theme.slug), ...theme })));
+      })
+      .catch(() => setThemes(FEATURED_THEMES));
+  }, []);
 
   const breakdown = party.breakdown();
   const hasPaidSelections = breakdown.total_gross > 0;
@@ -405,7 +419,7 @@ export default function BuildParty() {
   };
 
   return (
-    <div>
+    <div className="builder-screen">
       <div className="rb mb8">
         <h1 className="screen-title">{t("build.title")}</h1>
         <button className="hbtn" onClick={saveDraft} aria-label={t("build.save")}><CheckIcon size={20} /></button>
@@ -728,7 +742,7 @@ function ThemeStep({ themes, party }: { themes: Theme[]; party: Party }) {
 
   return (
     <SW title={t("build.theme_title")}>
-      <div className="cgrid mb16">
+      <div className="theme-grid mb16">
         {themes.map((t) => (
           <button
             key={t.id}
@@ -736,7 +750,7 @@ function ThemeStep({ themes, party }: { themes: Theme[]; party: Party }) {
             style={{ outline: th.theme === t.title ? "1.5px solid var(--chocolate)" : "none", outlineOffset: 2 }}
             onClick={() => selectDbTheme(t)}
           >
-            <img className="ccimg" src={t.image_url ?? ""} alt={t.title} />
+            <img className="theme-card-image" src={t.image_url ?? ""} alt={t.title} />
             <div className="ccov"><span className="cctitle" style={{ fontSize: "0.85rem" }}>{t.title}</span></div>
           </button>
         ))}

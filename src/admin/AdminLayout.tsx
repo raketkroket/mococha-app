@@ -30,7 +30,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   const [isDesktop, setIsDesktop] = useState(false);
 
   useEffect(() => {
-    const check = () => setIsDesktop(window.innerWidth >= 1024);
+    const check = () => setIsDesktop(window.innerWidth >= 768);
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
@@ -134,7 +134,7 @@ function AdminSidebarLayout({ children, onUseCustomerView }: { children: ReactNo
   const { language } = usePrefs();
   const t = createAdminT(language);
   const { signOut } = useAdminAuth();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => window.innerWidth < 1100);
 
   const navGroups = [
     { label: "Overzicht", items: [{ path: "/admin", icon: HomeIcon, label: t("admin.tab.overview"), exact: true }] },

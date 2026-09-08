@@ -193,7 +193,15 @@ export default function Conversation() {
   let lastDate = "";
 
   return (
-    <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", background: "var(--warm-white)" }}>
+    <div
+      className="conversation-workspace"
+      style={{
+        minHeight: "calc(100dvh - var(--header-h) - var(--st) - var(--s5) - var(--s6) - var(--sb))",
+        display: "flex",
+        flexDirection: "column",
+        background: "var(--warm-white)",
+      }}
+    >
       <div
         style={{
           position: "sticky", top: 0, zIndex: 20,

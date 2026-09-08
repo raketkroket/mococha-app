@@ -926,7 +926,7 @@ function ComponentForm({
         <label className="admin-field-label">Beschrijving</label>
         <textarea className="admin-textarea" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      <div className="admin-form-grid">
         <div className="admin-field">
           <label className="admin-field-label">Categorie</label>
           <select className="admin-select" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} style={{ width: "100%", padding: "10px 14px" }}>
@@ -940,7 +940,7 @@ function ComponentForm({
           <input className="admin-input" value={key} onChange={(e) => setKey(e.target.value)} placeholder={name.toLowerCase().replace(/\s+/g, "-")} disabled={!!component} />
         </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      <div className="admin-form-grid">
         <div className="admin-field">
           <label className="admin-field-label">Basisprijs (€)</label>
           <input className="admin-input" type="number" step="0.01" value={basePrice} onChange={(e) => setBasePrice(Number(e.target.value))} />
@@ -954,7 +954,7 @@ function ComponentForm({
           </select>
         </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      <div className="admin-form-grid">
         <div className="admin-field">
           <label className="admin-field-label">BTW tarief (%)</label>
           <input className="admin-input" type="number" step="0.01" value={vatRate} onChange={(e) => setVatRate(Number(e.target.value))} />
@@ -964,7 +964,7 @@ function ComponentForm({
           <input className="admin-input" type="number" value={sortOrder} onChange={(e) => setSortOrder(Number(e.target.value))} />
         </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      <div className="admin-form-grid">
         <div className="admin-field">
           <label className="admin-field-label">Min. aantal</label>
           <input className="admin-input" type="number" value={minQty} onChange={(e) => setMinQty(Number(e.target.value))} />
