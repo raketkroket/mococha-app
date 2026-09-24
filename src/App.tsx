@@ -1,12 +1,12 @@
 import { useEffect } from "react";
-import { BrowserRouter, Navigate, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Header, TabBar } from "./components/Nav";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import { ToastProvider } from "./components/Toast";
 import { useAuth } from "./store/auth";
 import { useTheme } from "./store/theme";
 import { usePrefs } from "./store/prefs";
-import { useViewMode } from "./store/viewMode";
+import { isSupabaseConfigured } from "./data/api";
 
 import Home from "./screens/Home";
 import BuildParty from "./screens/BuildParty";
@@ -85,8 +85,7 @@ function HeaderLayout({ children, title }: { children: React.ReactNode; title?: 
 }
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { isAdmin, loading } = useAdminAuth();
-  const mode = useViewMode((state) => state.mode);
+  const { user, isAdmin, loading } = useAdminAuth();
 
   if (loading) {
     return (
@@ -96,12 +95,27 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!isAdmin) {
-    return <AdminLogin />;
+  if (!isSupabaseConfigured) {
+    return (
+      <div className="admin-unauthorized">
+        <h1 className="admin-unauthorized-title">Beheer is nog niet geconfigureerd</h1>
+        <p className="admin-unauthorized-body">
+          Voeg VITE_SUPABASE_URL en VITE_SUPABASE_ANON_KEY toe aan de Vercel-omgeving en publiceer opnieuw.
+        </p>
+      </div>
+    );
   }
 
-  if (mode !== "admin") {
-    return <Navigate to="/account" replace />;
+  if (!isAdmin) {
+    if (!user) return <AdminLogin />;
+    return (
+      <div className="admin-unauthorized">
+        <h1 className="admin-unauthorized-title">Geen toegang</h1>
+        <p className="admin-unauthorized-body">
+          Je bent ingelogd, maar dit account heeft geen toegang tot MOCOCHA Beheer.
+        </p>
+      </div>
+    );
   }
 
   return <AdminLayout>{children}</AdminLayout>;
@@ -111,17 +125,15 @@ export default function App() {
   const init = useAuth((s) => s.init);
   const initTheme = useTheme((s) => s.init);
   const initPrefs = usePrefs((s) => s.init);
-  const initViewMode = useViewMode((s) => s.init);
   const initAdmin = useAdminAuth((s) => s.init);
 
   useEffect(() => {
     initTheme();
     initPrefs();
-    initViewMode();
     const u = init();
     const ua = initAdmin();
     return () => { u(); ua(); };
-  }, [init, initTheme, initPrefs, initViewMode, initAdmin]);
+  }, [init, initTheme, initPrefs, initAdmin]);
 
   return (
     <ToastProvider>

@@ -4,6 +4,7 @@ import { useAdminAuth } from "./auth";
 import { usePrefs } from "../store/prefs";
 import { useViewMode } from "../store/viewMode";
 import { createAdminT } from "./i18n";
+import { hasPermission } from "./types";
 import MfaChallenge from "../screens/MfaChallenge";
 import {
   HomeIcon,
@@ -133,32 +134,36 @@ function AdminSidebarLayout({ children, onUseCustomerView }: { children: ReactNo
   const navigate = useNavigate();
   const { language } = usePrefs();
   const t = createAdminT(language);
-  const { signOut } = useAdminAuth();
+  const { signOut, role } = useAdminAuth();
   const [collapsed, setCollapsed] = useState(() => window.innerWidth < 1100);
 
   const navGroups = [
-    { label: "Overzicht", items: [{ path: "/admin", icon: HomeIcon, label: t("admin.tab.overview"), exact: true }] },
+    { label: "Overzicht", items: [{ path: "/admin", icon: HomeIcon, label: t("admin.tab.overview"), exact: true, permission: undefined }] },
     { label: "Beheer", items: [
-      { path: "/admin/concepten", icon: ConceptIcon, label: t("admin.tab.concepts") },
-      { path: "/admin/klanten", icon: UserIcon, label: t("admin.nav.customers") },
-      { path: "/admin/berichten", icon: MailIcon, label: t("admin.tab.messages") },
-      { path: "/admin/agenda", icon: ClockIcon, label: t("admin.nav.agenda") },
+      { path: "/admin/concepten", icon: ConceptIcon, label: t("admin.tab.concepts"), permission: "concepts.view" },
+      { path: "/admin/klanten", icon: UserIcon, label: t("admin.nav.customers"), permission: "customers.view" },
+      { path: "/admin/berichten", icon: MailIcon, label: t("admin.tab.messages"), permission: "messages.manage" },
+      { path: "/admin/agenda", icon: ClockIcon, label: t("admin.nav.agenda"), permission: "events.view" },
     ] },
     { label: "Financieel", items: [
-      { path: "/admin/offertes", icon: LayersIcon, label: t("admin.nav.quotations") },
-      { path: "/admin/betalingen", icon: CreditCard, label: t("admin.nav.payments") },
+      { path: "/admin/offertes", icon: LayersIcon, label: t("admin.nav.quotations"), permission: "quotations.manage" },
+      { path: "/admin/betalingen", icon: CreditCard, label: t("admin.nav.payments"), permission: "payments.manage" },
     ] },
     { label: "Content", items: [
-      { path: "/admin/themas", icon: InspireIcon, label: t("admin.nav.themes") },
-      { path: "/admin/onderdelen", icon: PackageIcon, label: t("admin.nav.components") },
-      { path: "/admin/media", icon: SparklesIcon, label: t("admin.nav.media") },
-      { path: "/admin/inspiratie", icon: SparklesIcon, label: t("admin.nav.inspiration") },
+      { path: "/admin/inspiratie", icon: SparklesIcon, label: t("admin.nav.inspiration"), permission: "content.manage" },
+      { path: "/admin/themas", icon: InspireIcon, label: t("admin.nav.themes"), permission: "themes.manage" },
+      { path: "/admin/onderdelen", icon: PackageIcon, label: t("admin.nav.components"), permission: "content.manage" },
+      { path: "/admin/media", icon: SparklesIcon, label: t("admin.nav.media"), permission: "content.manage" },
     ] },
     { label: "Organisatie", items: [
-      { path: "/admin/medewerkers", icon: UserIcon, label: t("admin.nav.staff") },
-      { path: "/admin/audit", icon: ShieldIcon, label: t("admin.nav.audit") },
+      { path: "/admin/medewerkers", icon: UserIcon, label: t("admin.nav.staff"), permission: "staff.manage" },
+      { path: "/admin/audit", icon: ShieldIcon, label: t("admin.nav.audit"), permission: "audit.view" },
+      { path: "/admin/instellingen", icon: SettingsIcon, label: t("admin.nav.settings"), permission: "settings.manage" },
     ] },
-  ];
+  ].map((group) => ({
+    ...group,
+    items: group.items.filter((item) => !item.permission || hasPermission(role, item.permission)),
+  })).filter((group) => group.items.length > 0);
 
   const isActive = (path: string, exact?: boolean) =>
     exact ? pathname === path : pathname.startsWith(path);

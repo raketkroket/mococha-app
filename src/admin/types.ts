@@ -268,5 +268,9 @@ export function hasPermission(role: StaffRole | null, permission: string): boole
   if (!role) return false;
   if (role === "owner") return true;
   const perms = ROLE_PERMISSIONS[role] || [];
-  return perms.includes(permission);
+  if (perms.includes(permission)) return true;
+  if (permission.endsWith(".view")) {
+    return perms.includes(`${permission.slice(0, -".view".length)}.manage`);
+  }
+  return false;
 }

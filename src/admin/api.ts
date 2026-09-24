@@ -1,4 +1,5 @@
 import { supabase } from "../data/api";
+import { clearComponentCache } from "../data/components";
 import type {
   AdminConcept,
   AdminConversation,
@@ -550,6 +551,7 @@ export const adminApi = {
       .single();
     if (!error && data) {
       await logAudit("component_create", "party_components", data.id, undefined, { name: component.name });
+      clearComponentCache();
     }
     return { data: data as { id: string } | null, error: error?.message ?? null };
   },
@@ -567,6 +569,7 @@ export const adminApi = {
       .eq("id", id);
     if (!error) {
       await logAudit("component_update", "party_components", id, before as Record<string, unknown>, updates);
+      clearComponentCache();
     }
     return { error: error?.message ?? null };
   },
@@ -584,6 +587,7 @@ export const adminApi = {
       .eq("id", id);
     if (!error) {
       await logAudit("component_delete", "party_components", id, before as Record<string, unknown>);
+      clearComponentCache();
     }
     return { error: error?.message ?? null };
   },
@@ -610,6 +614,7 @@ export const adminApi = {
       .single();
     if (!error && data) {
       await logAudit("component_media_upload", "component_media", data.id, undefined, { component_id: componentId });
+      clearComponentCache();
     }
     return { data, error: error?.message ?? null };
   },
@@ -621,6 +626,7 @@ export const adminApi = {
       .from("component_media")
       .delete()
       .eq("id", mediaId);
+    if (!error) clearComponentCache();
     return { error: error?.message ?? null };
   },
 

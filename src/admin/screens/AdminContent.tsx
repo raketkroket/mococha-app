@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { adminApi } from "../api";
 import { usePrefs } from "../../store/prefs";
 import { createAdminT } from "../i18n";
@@ -16,6 +17,13 @@ import {
 
 type Tab = "inspiration" | "themes" | "components" | "media";
 
+const tabByPath: Record<string, Tab> = {
+  "/admin/inspiratie": "inspiration",
+  "/admin/themas": "themes",
+  "/admin/onderdelen": "components",
+  "/admin/media": "media",
+};
+
 const STORAGE_BASE = import.meta.env.VITE_SUPABASE_URL
   ? `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public`
   : "";
@@ -27,7 +35,12 @@ function imageUrl(bucket: string, path: string): string {
 export default function AdminContent() {
   const { language } = usePrefs();
   const t = createAdminT(language);
-  const [tab, setTab] = useState<Tab>("inspiration");
+  const { pathname } = useLocation();
+  const [tab, setTab] = useState<Tab>(() => tabByPath[pathname] ?? "inspiration");
+
+  useEffect(() => {
+    setTab(tabByPath[pathname] ?? "inspiration");
+  }, [pathname]);
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "inspiration", label: t("admin.content.inspiration") },
@@ -695,6 +708,17 @@ type Component = {
 
 const PRICING_UNITS = ["one_time", "per_table", "per_child", "per_participating_child"];
 
+const PRICING_UNIT_LABELS: Record<string, string> = {
+  one_time: "Eenmalig",
+  per_table: "Per tafel",
+  per_child: "Per kind",
+  per_participating_child: "Per deelnemend kind",
+};
+
+function formatEuro(amount: number): string {
+  return new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" }).format(amount);
+}
+
 function ComponentsTab() {
   const { language } = usePrefs();
   const t = createAdminT(language);
@@ -702,6 +726,8 @@ function ComponentsTab() {
   const [components, setComponents] = useState<Component[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCat, setSelectedCat] = useState<string>("");
+  const [status, setStatus] = useState<"all" | "active" | "hidden">("all");
+  const [query, setQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingComponent, setEditingComponent] = useState<Component | null>(null);
 
@@ -718,7 +744,15 @@ function ComponentsTab() {
 
   useEffect(() => { reload(); }, []);
 
-  const filtered = selectedCat ? components.filter((c) => c.category_id === selectedCat) : components;
+  const filtered = components.filter((component) => {
+    const matchesCategory = !selectedCat || component.category_id === selectedCat;
+    const matchesStatus = status === "all" || (status === "active" ? component.is_active : !component.is_active);
+    const normalizedQuery = query.trim().toLocaleLowerCase("nl-NL");
+    const matchesQuery = !normalizedQuery
+      || component.name.toLocaleLowerCase("nl-NL").includes(normalizedQuery)
+      || (component.description ?? "").toLocaleLowerCase("nl-NL").includes(normalizedQuery);
+    return matchesCategory && matchesStatus && matchesQuery;
+  });
 
   const toggleActive = async (comp: Component) => {
     await adminApi.updateComponent(comp.id, { is_active: !comp.is_active });
@@ -754,6 +788,19 @@ function ComponentsTab() {
             <option key={cat.id} value={cat.id}>{cat.title}</option>
           ))}
         </select>
+        <select className="admin-select" value={status} onChange={(e) => setStatus(e.target.value as "all" | "active" | "hidden")}>
+          <option value="all">Alle statussen</option>
+          <option value="active">Actief</option>
+          <option value="hidden">Verborgen</option>
+        </select>
+        <input
+          className="admin-input"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Zoek onderdeel..."
+          aria-label="Zoek onderdeel"
+          style={{ minWidth: 180 }}
+        />
       </div>
 
       {showForm && (
@@ -790,12 +837,12 @@ function ComponentsTab() {
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: "0.875rem", fontWeight: 600 }}>{comp.name}</span>
                     <span className={`admin-status-badge ${comp.is_active ? "admin-status-published" : "admin-status-draft"}`}>
-                      {comp.is_active ? "Actief" : "Inactief"}
+                      {comp.is_active ? "Actief" : "Verborgen"}
                     </span>
                   </div>
                   <div style={{ fontSize: "0.75rem", color: "var(--taupe)", marginTop: 2 }}>
-                    {cat?.title ?? "Geen categorie"} · €{Number(comp.base_price).toFixed(2)} / {comp.pricing_unit}
-                    {comp.requires_large_bus && " · 🚐"}
+                    {cat?.title ?? "Geen categorie"} · {formatEuro(Number(comp.base_price))} · {PRICING_UNIT_LABELS[comp.pricing_unit] ?? "Eenmalig"}
+                    {comp.requires_large_bus && " · Grote bus nodig"}
                   </div>
                 </div>
                 <div className="admin-content-card-actions" style={{ flexShrink: 0 }}>
@@ -804,7 +851,7 @@ function ComponentsTab() {
                   </button>
                   <button className="admin-toggle-chip" onClick={() => toggleActive(comp)}>
                     <CheckIcon size={14} />
-                    {comp.is_active ? "Deactiveren" : "Activeren"}
+                    {comp.is_active ? "Verbergen" : "Activeren"}
                   </button>
                   <button className="admin-toggle-chip admin-toggle-danger" onClick={() => handleDelete(comp)}>
                     <TrashIcon size={14} />
@@ -844,7 +891,6 @@ function ComponentForm({
   const [dimensions, setDimensions] = useState(component?.dimensions ?? "");
   const [indoorOutdoor, setIndoorOutdoor] = useState(component?.indoor_outdoor ?? "");
   const [sortOrder, setSortOrder] = useState(component?.sort_order ?? 99);
-  const [key, setKey] = useState(component?.key ?? "");
   const [media, setMedia] = useState(component?.component_media ?? []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -867,6 +913,8 @@ function ComponentForm({
       minimum_quantity: minQty,
       maximum_quantity: maxQty,
       dimensions: dimensions || null,
+      indoor_outdoor: indoorOutdoor || null,
+      sort_order: sortOrder,
     };
 
     if (component) {
@@ -874,7 +922,7 @@ function ComponentForm({
       if (err) { setError(err); setSaving(false); return; }
       onSaved();
     } else {
-      const { data, error: err } = await adminApi.createComponent(updates as { name: string; category_id: string; base_price: number; pricing_unit: string; description?: string; vat_rate?: number; price_includes_vat?: boolean; requires_large_bus?: boolean; requires_consultation?: boolean; minimum_quantity?: number; maximum_quantity?: number; dimensions?: string; indoor_outdoor?: string; sort_order?: number; key?: string });
+      const { data, error: err } = await adminApi.createComponent(updates as { name: string; category_id: string; base_price: number; pricing_unit: string; description?: string; vat_rate?: number; price_includes_vat?: boolean; requires_large_bus?: boolean; requires_consultation?: boolean; minimum_quantity?: number; maximum_quantity?: number; dimensions?: string; indoor_outdoor?: string; sort_order?: number });
       if (err) { setError(err); setSaving(false); return; }
       if (data) onSaved();
     }
@@ -935,10 +983,6 @@ function ComponentForm({
             ))}
           </select>
         </div>
-        <div className="admin-field">
-          <label className="admin-field-label">Key (unieke ID)</label>
-          <input className="admin-input" value={key} onChange={(e) => setKey(e.target.value)} placeholder={name.toLowerCase().replace(/\s+/g, "-")} disabled={!!component} />
-        </div>
       </div>
       <div className="admin-form-grid">
         <div className="admin-field">
@@ -948,8 +992,8 @@ function ComponentForm({
         <div className="admin-field">
           <label className="admin-field-label">Prijseenheid</label>
           <select className="admin-select" value={pricingUnit} onChange={(e) => setPricingUnit(e.target.value)} style={{ width: "100%", padding: "10px 14px" }}>
-            {PRICING_UNITS.map((u) => (
-              <option key={u} value={u}>{u}</option>
+            {PRICING_UNITS.map((unit) => (
+              <option key={unit} value={unit}>{PRICING_UNIT_LABELS[unit]}</option>
             ))}
           </select>
         </div>

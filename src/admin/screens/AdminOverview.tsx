@@ -89,9 +89,9 @@ export default function AdminOverview() {
   ];
 
   const quickActions = [
-    { icon: ImageIcon, label: t("admin.overview.upload_photo"), path: "/admin/content" },
-    { icon: SparklesIcon, label: t("admin.overview.add_inspiration"), path: "/admin/content" },
-    { icon: LayersIcon, label: t("admin.overview.new_theme"), path: "/admin/content" },
+    { icon: ImageIcon, label: t("admin.overview.upload_photo"), path: "/admin/media" },
+    { icon: SparklesIcon, label: t("admin.overview.add_inspiration"), path: "/admin/inspiratie" },
+    { icon: LayersIcon, label: t("admin.overview.new_theme"), path: "/admin/themas" },
     { icon: MailIcon, label: t("admin.overview.reply_message"), path: "/admin/berichten" },
     { icon: ConceptIcon, label: t("admin.overview.create_quote"), path: "/admin/offertes" },
     { icon: SearchIcon, label: t("admin.overview.find_concept"), path: "/admin/concepten" },
