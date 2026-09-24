@@ -1,5 +1,5 @@
-const CACHE_NAME = "mococha-v4";
-const ASSETS = ["/", "/index.html", "/manifest.json", "/mococha-app-icon.svg", "/mocochaoriginal.png", "/mococha-hero.webp"];
+const CACHE_NAME = "mococha-v5";
+const ASSETS = ["/", "/index.html", "/manifest.json", "/mococha-app-icon-192.png", "/mococha-app-icon-512.png", "/mococha-hero.webp"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)).catch(() => {}));
