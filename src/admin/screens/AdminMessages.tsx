@@ -72,7 +72,7 @@ export default function AdminMessages() {
         </div>
       </div>
 
-      <AdminFilterBar ariaLabel="Filter berichten" options={filterOptions} value={filter} onChange={setFilter} />
+      <AdminFilterBar ariaLabel="Filter berichten" options={filterOptions} value={filter} onChange={setFilter} primaryCount={2} />
 
       {loading ? (
         <div className="admin-list">

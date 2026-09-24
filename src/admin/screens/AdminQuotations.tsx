@@ -55,6 +55,7 @@ export default function AdminQuotations() {
         options={STATUS_FILTERS.map((status) => ({ value: status, label: STATUS_LABELS[status] }))}
         value={filter}
         onChange={setFilter}
+        primaryCount={2}
       />
 
       {loading ? (

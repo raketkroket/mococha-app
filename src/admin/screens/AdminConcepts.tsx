@@ -63,7 +63,7 @@ export default function AdminConcepts() {
         </div>
       </div>
 
-      <AdminFilterBar ariaLabel="Filter concepten" options={filterOptions} value={filter} onChange={setFilter} />
+      <AdminFilterBar ariaLabel="Filter concepten" options={filterOptions} value={filter} onChange={setFilter} primaryCount={2} />
 
       {loading ? (
         <div className="admin-list">

@@ -1848,7 +1848,7 @@
   .admin-quick-action { min-height: 44px; }
   .admin-filter-chip { min-width: 0; flex: 1 1 0; padding-inline: 10px; overflow: hidden; text-overflow: ellipsis; }
   .admin-filter-more { flex: 0 0 auto; }
-  .admin-filter-more select { max-width: 88px; }
+  .admin-filter-more select { max-width: 104px; }
   .admin-list { gap: 10px; }
   .admin-concept-card { min-height: 132px; padding: 14px; justify-content: space-between; }
   .admin-concept-card-header { align-items: flex-start; gap: 10px; }

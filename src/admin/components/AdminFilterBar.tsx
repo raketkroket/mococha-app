@@ -19,7 +19,7 @@ export function AdminFilterBar({
   primaryCount = 3,
 }: AdminFilterBarProps) {
   const primaryOptions = options.slice(0, primaryCount);
-  const overflowOptions = options.slice(primaryCount);
+  const overflowOptions = options;
   const overflowValue = overflowOptions.some((option) => option.value === value) ? value : "";
 
   return (
