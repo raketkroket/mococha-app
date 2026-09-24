@@ -18,6 +18,8 @@
   color: var(--admin-text);
   font-family: var(--sans);
   -webkit-font-smoothing: antialiased;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 .admin-phone-layout *,
@@ -134,8 +136,8 @@
 
 /* Phone main */
 .admin-main {
-  padding: var(--s4);
-  padding-bottom: calc(var(--admin-tab-h) + var(--s6) + env(safe-area-inset-bottom, 0px));
+  padding: 16px;
+  padding-bottom: calc(var(--admin-tab-h) + 32px + env(safe-area-inset-bottom, 0px));
   width: 100%;
   max-width: 720px;
   margin: 0 auto;
@@ -154,9 +156,12 @@
   align-items: stretch;
   padding-bottom: env(safe-area-inset-bottom, 0px);
   z-index: 100;
+  max-width: 100vw;
 }
 .admin-tab {
   flex: 1;
+  min-width: 0;
+  min-height: 48px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -169,6 +174,10 @@
 .admin-tab-label {
   font-size: var(--t-nav);
   font-weight: 500;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Sidebar layout */
@@ -493,16 +502,21 @@
 /* Filter bar */
 .admin-filter-bar {
   display: flex;
-  gap: var(--s2);
-  overflow-x: auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
   margin-bottom: var(--s4);
-  padding-bottom: var(--s1);
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
 }
-.admin-filter-bar::-webkit-scrollbar { display: none; }
+.admin-filter-primary {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
 .admin-filter-chip {
-  padding: 6px 14px;
+  min-height: 40px;
+  padding: 0 13px;
   border-radius: 999px;
   background: var(--admin-surface);
   border: 0.5px solid var(--admin-border);
@@ -512,11 +526,36 @@
   white-space: nowrap;
   transition: all var(--dur) var(--ease);
 }
+.admin-filter-chip:focus-visible,
+.admin-filter-more:focus-within { outline: 2px solid var(--chocolate); outline-offset: 2px; }
 .admin-filter-chip.active {
   background: var(--chocolate);
   color: var(--pure-white);
   border-color: var(--chocolate);
 }
+.admin-filter-more {
+  position: relative;
+  flex: 0 0 auto;
+  min-height: 40px;
+  border: 0.5px solid var(--admin-border);
+  border-radius: 999px;
+  background: var(--admin-surface);
+  color: var(--taupe);
+}
+.admin-filter-more::after { content: "⌄"; pointer-events: none; position: absolute; right: 11px; top: 8px; }
+.admin-filter-more select {
+  appearance: none;
+  min-height: 38px;
+  max-width: 116px;
+  padding: 0 27px 0 13px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+.admin-filter-more.active { background: var(--chocolate); border-color: var(--chocolate); color: var(--pure-white); }
 
 /* List */
 .admin-list {
@@ -1110,7 +1149,8 @@
   border-radius: var(--admin-radius);
   box-shadow: var(--shadow-md);
   padding: var(--s2);
-  min-width: 200px;
+  width: min(200px, calc(100vw - 32px));
+  min-width: 0;
   z-index: 200;
   box-shadow: var(--shadow-md);
 }
@@ -1503,9 +1543,31 @@
 /* Empty */
 .admin-empty {
   text-align: center;
-  padding: var(--s8) var(--s4);
+  padding: var(--s6) var(--s4);
   color: var(--taupe);
   font-size: 0.875rem;
+}
+.admin-empty-card {
+  display: grid;
+  place-items: center;
+  gap: var(--s2);
+  min-height: 220px;
+  border: 0.5px dashed var(--admin-border);
+  border-radius: var(--admin-radius);
+  background: color-mix(in srgb, var(--admin-surface) 75%, transparent);
+}
+.admin-empty-card strong { color: var(--admin-text); font-size: 1rem; }
+.admin-empty-card p { margin: 0; max-width: 280px; line-height: 1.5; }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* Skeleton */
@@ -1774,6 +1836,7 @@
 }
 
 @media (max-width: 767px) {
+  .admin-main { padding: 16px; padding-bottom: calc(var(--admin-tab-h) + 32px + env(safe-area-inset-bottom, 0px)); }
   .admin-page-header { flex-direction: column; gap: var(--s2); }
   .admin-header-name, .admin-header-badge { display: none; }
   .admin-customer-view span { display: none; }
@@ -1783,6 +1846,21 @@
   .admin-stat-count { font-size: 1.25rem; }
   .admin-quick-actions { grid-template-columns: 1fr; }
   .admin-quick-action { min-height: 44px; }
+  .admin-filter-chip { min-width: 0; flex: 1 1 0; padding-inline: 10px; overflow: hidden; text-overflow: ellipsis; }
+  .admin-filter-more { flex: 0 0 auto; }
+  .admin-filter-more select { max-width: 88px; }
+  .admin-list { gap: 10px; }
+  .admin-concept-card { min-height: 132px; padding: 14px; justify-content: space-between; }
+  .admin-concept-card-header { align-items: flex-start; gap: 10px; }
+  .admin-concept-card-body { align-items: flex-end; gap: 10px; }
+  .admin-concept-info { min-width: 0; }
+  .admin-concept-customer, .admin-concept-meta { overflow-wrap: anywhere; }
+  .admin-concept-total { white-space: nowrap; }
+  .admin-message-row { min-height: 84px; padding: 12px; align-items: flex-start; }
+  .admin-message-avatar { width: 42px; height: 42px; }
+  .admin-message-time { margin-left: 8px; }
+  .admin-message-subject { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .admin-message-meta { margin-top: 2px; }
   .admin-sub-tabs { display: flex; overflow-x: auto; }
   .admin-sub-tab { flex: 0 0 auto; white-space: nowrap; }
   .admin-detail-row { align-items: flex-start; gap: var(--s3); }
@@ -1792,6 +1870,12 @@
   .admin-quotation-row,
   .admin-payment-row,
   .admin-audit-row { align-items: flex-start; flex-wrap: wrap; }
+  .admin-customer-row,
+  .admin-payment-row,
+  .admin-quotation-row,
+  .admin-agenda-row,
+  .admin-staff-row,
+  .admin-audit-row { min-height: 72px; padding: 12px; }
   .admin-staff-controls,
   .admin-agenda-badges { width: 100%; padding-left: 52px; flex-wrap: wrap; }
   .admin-quotation-amount,
@@ -1804,6 +1888,7 @@
   .admin-form-actions .admin-btn-primary,
   .admin-form-actions .admin-btn-secondary { flex: 1 1 140px; }
   .admin-form-grid { grid-template-columns: 1fr; }
+  .admin-form-card { padding: 16px; }
   .admin-sticky-bar { margin-left: calc(-1 * var(--s4)); margin-right: calc(-1 * var(--s4)); padding-bottom: calc(var(--s3) + env(safe-area-inset-bottom, 0px)); }
 }
 

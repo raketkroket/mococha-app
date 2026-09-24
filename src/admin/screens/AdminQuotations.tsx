@@ -3,8 +3,18 @@ import { adminApi } from "../api";
 import { usePrefs } from "../../store/prefs";
 import { createAdminT } from "../i18n";
 import type { AdminQuotation } from "../types";
+import { AdminFilterBar } from "../components/AdminFilterBar";
 
 const STATUS_FILTERS = ["all", "draft", "sent", "viewed", "accepted", "expired", "withdrawn"];
+const STATUS_LABELS: Record<string, string> = {
+  all: "Alles",
+  draft: "Concept",
+  sent: "Verstuurd",
+  viewed: "Bekeken",
+  accepted: "Geaccepteerd",
+  expired: "Verlopen",
+  withdrawn: "Ingetrokken",
+};
 
 export default function AdminQuotations() {
   const { language } = usePrefs();
@@ -26,30 +36,37 @@ export default function AdminQuotations() {
     return new Date(dateStr).toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
   };
 
+  const formatCurrency = (amount: number) => new Intl.NumberFormat("nl-NL", {
+    style: "currency",
+    currency: "EUR",
+  }).format(amount);
+
   return (
     <div className="admin-quotations">
       <div className="admin-page-header">
-        <h1 className="admin-page-title">{t("admin.nav.quotations")}</h1>
+        <div>
+          <h1 className="admin-page-title">{t("admin.nav.quotations")}</h1>
+          <p className="admin-page-subtitle">Bekijk en volg offertes voor klanten.</p>
+        </div>
       </div>
 
-      <div className="admin-filter-bar">
-        {STATUS_FILTERS.map((s) => (
-          <button
-            key={s}
-            className={`admin-filter-chip ${filter === s ? "active" : ""}`}
-            onClick={() => setFilter(s)}
-          >
-            {s === "all" ? "Alle" : s}
-          </button>
-        ))}
-      </div>
+      <AdminFilterBar
+        ariaLabel="Filter offertes"
+        options={STATUS_FILTERS.map((status) => ({ value: status, label: STATUS_LABELS[status] }))}
+        value={filter}
+        onChange={setFilter}
+      />
 
       {loading ? (
         <div className="admin-list">
           {[0, 1, 2].map((i) => <div key={i} className="admin-quotation-row admin-skeleton" />)}
         </div>
       ) : quotations.length === 0 ? (
-        <div className="admin-empty">Geen offertes gevonden</div>
+        <div className="admin-empty admin-empty-card">
+          <strong>Geen offertes gevonden</strong>
+          <p>{filter === "all" ? "Nieuwe offertes verschijnen hier." : "Er zijn geen offertes met deze status."}</p>
+          {filter !== "all" && <button className="admin-btn-secondary" onClick={() => setFilter("all")}>Alle offertes tonen</button>}
+        </div>
       ) : (
         <div className="admin-list">
           {quotations.map((quot) => (
@@ -63,10 +80,10 @@ export default function AdminQuotations() {
                 </span>
               </div>
               <div className="admin-quotation-amount">
-                € {quot.total.toFixed(2)}
+                {formatCurrency(quot.total)}
               </div>
               <span className={`admin-status-badge admin-status-${quot.status}`}>
-                {quot.status}
+                {STATUS_LABELS[quot.status] ?? quot.status}
               </span>
             </div>
           ))}

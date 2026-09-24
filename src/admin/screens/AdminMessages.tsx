@@ -5,6 +5,7 @@ import { supabase } from "../../data/api";
 import { usePrefs } from "../../store/prefs";
 import { createAdminT } from "../i18n";
 import type { AdminConversation } from "../types";
+import { AdminFilterBar } from "../components/AdminFilterBar";
 
 const FILTERS = ["unread", "all", "waiting_mococha", "waiting_customer", "closed"];
 
@@ -60,30 +61,29 @@ export default function AdminMessages() {
     return d.toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
   };
 
+  const filterOptions = FILTERS.map((status) => ({ value: status, label: t(`admin.messages.filter_${status}`) }));
+
   return (
     <div className="admin-messages">
       <div className="admin-page-header">
-        <h1 className="admin-page-title">{t("admin.messages.title")}</h1>
+        <div>
+          <h1 className="admin-page-title">{t("admin.messages.title")}</h1>
+          <p className="admin-page-subtitle">Lees en beantwoord klantvragen op een plek.</p>
+        </div>
       </div>
 
-      <div className="admin-filter-bar">
-        {FILTERS.map((f) => (
-          <button
-            key={f}
-            className={`admin-filter-chip ${filter === f ? "active" : ""}`}
-            onClick={() => setFilter(f)}
-          >
-            {t(`admin.messages.filter_${f}`)}
-          </button>
-        ))}
-      </div>
+      <AdminFilterBar ariaLabel="Filter berichten" options={filterOptions} value={filter} onChange={setFilter} />
 
       {loading ? (
         <div className="admin-list">
           {[0, 1, 2].map((i) => <div key={i} className="admin-message-row admin-skeleton" />)}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="admin-empty">{t("admin.messages.empty")}</div>
+        <div className="admin-empty admin-empty-card">
+          <strong>Geen berichten</strong>
+          <p>{filter === "all" ? "Nieuwe klantgesprekken verschijnen hier." : "Er zijn geen berichten met dit filter."}</p>
+          {filter !== "all" && <button className="admin-btn-secondary" onClick={() => setFilter("all")}>Alle berichten tonen</button>}
+        </div>
       ) : (
         <div className="admin-list">
           {filtered.map((conv) => (
@@ -102,10 +102,10 @@ export default function AdminMessages() {
                   </span>
                   <span className="admin-message-time">{formatTime(conv.last_message_at)}</span>
                 </div>
-                <div className="admin-message-subject">{conv.subject}</div>
+                <div className="admin-message-subject">{conv.last_message_preview ?? conv.subject}</div>
                 <div className="admin-message-meta">
                   {conv.unread_by_admin && <span className="admin-unread-dot" />}
-                  <span className="admin-message-priority">{conv.priority}</span>
+                  <span className="admin-message-priority">{filter === "waiting_customer" ? "Wacht op klant" : conv.unread_by_admin ? "Wacht op MOCOCHA" : conv.status === "closed" ? "Gesloten" : "In behandeling"}</span>
                 </div>
               </div>
             </button>

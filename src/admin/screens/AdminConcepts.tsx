@@ -4,6 +4,7 @@ import { adminApi } from "../api";
 import { usePrefs } from "../../store/prefs";
 import { createAdminT } from "../i18n";
 import type { AdminConcept } from "../types";
+import { AdminFilterBar } from "../components/AdminFilterBar";
 
 
 const STATUS_FILTERS = [
@@ -48,23 +49,21 @@ export default function AdminConcepts() {
     return eventData?.city ?? "—";
   };
 
+  const filterOptions = STATUS_FILTERS.map((status) => ({
+    value: status,
+    label: t(`admin.concepts.filter_${status === "all" ? "all" : status === "quotation_requested" ? "quote" : status === "awaiting_payment" ? "payment" : status}`),
+  }));
+
   return (
     <div className="admin-concepts">
       <div className="admin-page-header">
-        <h1 className="admin-page-title">{t("admin.concepts.title")}</h1>
+        <div>
+          <h1 className="admin-page-title">{t("admin.concepts.title")}</h1>
+          <p className="admin-page-subtitle">Beheer aanvragen en houd klanten op de hoogte.</p>
+        </div>
       </div>
 
-      <div className="admin-filter-bar">
-        {STATUS_FILTERS.map((s) => (
-          <button
-            key={s}
-            className={`admin-filter-chip ${filter === s ? "active" : ""}`}
-            onClick={() => setFilter(s)}
-          >
-            {t(`admin.concepts.filter_${s === "all" ? "all" : s === "quotation_requested" ? "quote" : s === "awaiting_payment" ? "payment" : s}`)}
-          </button>
-        ))}
-      </div>
+      <AdminFilterBar ariaLabel="Filter concepten" options={filterOptions} value={filter} onChange={setFilter} />
 
       {loading ? (
         <div className="admin-list">
@@ -73,7 +72,11 @@ export default function AdminConcepts() {
           ))}
         </div>
       ) : concepts.length === 0 ? (
-        <div className="admin-empty">{t("admin.concepts.empty")}</div>
+        <div className="admin-empty admin-empty-card">
+          <strong>Geen concepten gevonden</strong>
+          <p>{filter === "all" ? "Nieuwe aanvragen van klanten verschijnen hier." : "Er zijn geen concepten met deze status."}</p>
+          {filter !== "all" && <button className="admin-btn-secondary" onClick={() => setFilter("all")}>Alle concepten tonen</button>}
+        </div>
       ) : (
         <div className="admin-list">
           {concepts.map((concept) => (
@@ -96,7 +99,7 @@ export default function AdminConcepts() {
                     {concept.customer_email ?? t("admin.concepts.customer")}
                   </span>
                   <span className="admin-concept-meta">
-                    {formatDate(getEventDate(concept))} · {getCity(concept)}
+                    {concept.name ?? "Feestconcept"} · {formatDate(getEventDate(concept))} · {getCity(concept)}
                   </span>
                 </div>
                 <div className="admin-concept-pricing">
